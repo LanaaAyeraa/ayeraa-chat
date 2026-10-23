@@ -43,6 +43,20 @@ export function formatTimestamp(timestamp: number): string {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+export function formatChatTime(timestamp: number): string {
+  if (!timestamp) return "";
+  const now = Date.now();
+  const diff = now - timestamp;
+  if (diff < 60000) return "Baru saja";
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m`;
+  const date = new Date(timestamp);
+  const today = new Date();
+  if (date.toDateString() === today.toDateString()) {
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+  return date.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
 export function formatBytes(bytes: number, decimals = 1): string {
   if (!bytes || bytes === 0) return "0 B";
   const k = 1024;

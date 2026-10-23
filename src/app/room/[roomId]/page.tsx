@@ -124,6 +124,14 @@ export default function RoomChatPage({ params }: RoomPageProps) {
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
+          if (isDmRoom(roomId)) {
+            fetch("/api/notifications/read", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ userId: uid, dmRoomId: roomId }),
+            }).catch(() => {});
+          }
+
           setRoomName(data.room.name);
           const incoming = (data.room.participants as Participant[]) || [];
           setParticipants((prev) => {

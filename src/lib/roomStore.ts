@@ -1,5 +1,7 @@
 import { Room, Participant, Message, Attachment } from "@/types/chat";
 import fs from "fs";
+import { isDmRoom, getDmPeerId } from "./utils";
+import { addDmNotification, recordUserDmRoom } from "./notificationStore";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -240,6 +242,10 @@ export function registerParticipant(
     });
   }
 
+  if (isDmRoom(room.id)) {
+    recordUserDmRoom(participant.id, room.id).catch(() => {});
+  }
+
   return room;
 }
 
@@ -292,6 +298,31 @@ export async function addMessage(
   }
 
   await persistRoomToStorage(room.id);
+
+  if (isDmRoom(room.id)) {
+    const peerId = getDmPeerId(room.id, params.senderId);
+    if (peerId && peerId !== params.senderId) {
+      recordUserDmRoom(params.senderId, room.id).catch(() => {});
+      recordUserDmRoom(peerId, room.id).catch(() => {});
+
+      const previewText =
+        (params.content || "").trim() ||
+        (params.attachment
+          ? params.attachment.isImage
+            ? "Mengirim foto"
+            : `Mengirim berkas: ${params.attachment.name}`
+          : "Pesan baru");
+
+      addDmNotification({
+        recipientId: peerId,
+        dmRoomId: room.id,
+        senderId: params.senderId,
+        senderName: params.senderName,
+        senderAvatar: params.senderAvatar,
+        content: previewText,
+      }).catch(() => {});
+    }
+  }
 
   return message;
 }

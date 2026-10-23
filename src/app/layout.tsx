@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { DmNotificationManager } from "@/components/notifications/DmNotificationManager";
 
 export const metadata: Metadata = {
   title: "Ayeraa Chat — Modern Real-Time Chat Rooms",
@@ -15,7 +16,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="min-h-screen bg-background text-foreground antialiased selection:bg-zinc-800 selection:text-zinc-100">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          {children}
+          <DmNotificationManager />
+        </AuthProvider>
       </body>
     </html>
   );

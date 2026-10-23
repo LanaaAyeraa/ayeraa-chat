@@ -16,7 +16,7 @@ import {
   Search,
   UserCheck,
 } from "lucide-react";
-import { generateRoomSlug, getDmRoomId } from "@/lib/utils";
+import { generateRoomSlug, getDmRoomId, formatChatTime } from "@/lib/utils";
 import { SpotlightCard } from "@/components/amicro/SpotlightCard";
 import { TextShimmer } from "@/components/amicro/TextShimmer";
 import { useAuth } from "@/context/AuthContext";
@@ -39,13 +39,61 @@ export default function HomePage() {
   const [roomTitle, setRoomTitle] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"create" | "join" | "search">("create");
+  const [activeTab, setActiveTab] = useState<"messages" | "create" | "join" | "search">("messages");
   const [publicRooms, setPublicRooms] = useState<PublicRoom[]>([]);
+  const [conversations, setConversations] = useState<
+    Array<{
+      roomId: string;
+      peerId: string;
+      peerName: string;
+      peerUsername?: string;
+      peerAvatar: string;
+      peerIsOnline: boolean;
+      lastMessageSnippet: string;
+      lastMessageSenderId?: string;
+      lastMessageTimestamp: number;
+      unreadCount: number;
+    }>
+  >([]);
+  const [conversationsLoading, setConversationsLoading] = useState(false);
+  const [chatFilter, setChatFilter] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<
     Array<{ id: string; name: string; username: string; avatar: string }>
   >([]);
   const [searchLoading, setSearchLoading] = useState(false);
+
+  // Poll conversations (IG/WhatsApp chat threads)
+  const loadConversations = () => {
+    if (!user) return;
+    fetch(`/api/conversations?userId=${user.id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.conversations)) {
+          setConversations(data.conversations);
+        }
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    if (!user) return;
+    setConversationsLoading(true);
+    fetch(`/api/conversations?userId=${user.id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.conversations)) {
+          setConversations(data.conversations);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setConversationsLoading(false));
+
+    const timer = setInterval(loadConversations, 4000);
+    return () => clearInterval(timer);
+  }, [user]);
+
+  const totalUnread = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
 
   useEffect(() => {
     setRoomSlug(generateRoomSlug());
@@ -195,7 +243,23 @@ export default function HomePage() {
               className="w-full max-w-lg bg-zinc-900/70 border border-zinc-800/90 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md"
             >
               {/* Segmented Control / Tabs */}
-              <div className="grid grid-cols-3 bg-zinc-950 p-1 rounded-xl border border-zinc-800/80 mb-6">
+              <div className="grid grid-cols-4 bg-zinc-950 p-1 rounded-xl border border-zinc-800/80 mb-6">
+                <button
+                  onClick={() => setActiveTab("messages")}
+                  className={`py-2 text-xs font-medium rounded-lg transition-all duration-150 active:scale-95 flex items-center justify-center gap-1.5 relative ${
+                    activeTab === "messages"
+                      ? "bg-zinc-800 text-zinc-100 shadow-sm"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Pesan</span>
+                  {totalUnread > 0 && (
+                    <span className="bg-rose-500 text-white text-[10px] font-mono px-1.5 py-0.2 rounded-full shadow-[0_0_8px_rgba(244,63,94,0.6)]">
+                      {totalUnread}
+                    </span>
+                  )}
+                </button>
                 <button
                   onClick={() => setActiveTab("create")}
                   className={`py-2 text-xs font-medium rounded-lg transition-all duration-150 active:scale-95 ${
@@ -214,23 +278,119 @@ export default function HomePage() {
                       : "text-zinc-400 hover:text-zinc-200"
                   }`}
                 >
-                  Gabung Kode
+                  Gabung
                 </button>
                 <button
                   onClick={() => setActiveTab("search")}
-                  className={`py-2 text-xs font-medium rounded-lg transition-all duration-150 active:scale-95 flex items-center justify-center gap-1.5 ${
+                  className={`py-2 text-xs font-medium rounded-lg transition-all duration-150 active:scale-95 flex items-center justify-center gap-1 ${
                     activeTab === "search"
                       ? "bg-zinc-800 text-zinc-100 shadow-sm"
                       : "text-zinc-400 hover:text-zinc-200"
                   }`}
                 >
-                  <Search className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Cari & DM</span>
+                  <Search className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Cari</span>
                 </button>
               </div>
 
               {/* Tab Content */}
-              {activeTab === "create" ? (
+              {activeTab === "messages" ? (
+                /* WhatsApp / Instagram Style Direct Message Threads */
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Cari dalam pesan..."
+                      value={chatFilter}
+                      onChange={(e) => setChatFilter(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-800/90 rounded-xl pl-9 pr-3.5 py-2 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-600 transition-colors"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+                    {conversationsLoading && conversations.length === 0 ? (
+                      <div className="py-10 flex flex-col items-center justify-center gap-2 text-zinc-500 text-xs font-mono">
+                        <div className="w-5 h-5 border-2 border-zinc-700 border-t-zinc-300 rounded-full animate-spin" />
+                        <span>Memuat percakapan...</span>
+                      </div>
+                    ) : conversations.length > 0 ? (
+                      conversations
+                        .filter(
+                          (c) =>
+                            c.peerName.toLowerCase().includes(chatFilter.toLowerCase()) ||
+                            (c.peerUsername &&
+                              c.peerUsername.toLowerCase().includes(chatFilter.toLowerCase())) ||
+                            c.lastMessageSnippet.toLowerCase().includes(chatFilter.toLowerCase())
+                        )
+                        .map((c) => (
+                          <div
+                            key={c.roomId}
+                            onClick={() => router.push(`/room/${c.roomId}`)}
+                            className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-900/80 transition-all duration-150 cursor-pointer group active:scale-[0.99]"
+                          >
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <div className="relative shrink-0">
+                                <Avatar src={c.peerAvatar} size="md" />
+                                <span
+                                  className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-zinc-950 ${
+                                    c.peerIsOnline
+                                      ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]"
+                                      : "bg-zinc-500"
+                                  }`}
+                                />
+                              </div>
+                              <div className="min-w-0 flex-1 pr-2">
+                                <div className="flex items-center justify-between gap-1 mb-0.5">
+                                  <p className="text-xs font-semibold text-zinc-100 truncate group-hover:text-white transition-colors">
+                                    {c.peerName}
+                                  </p>
+                                  <span className="text-[10px] font-mono text-zinc-500 shrink-0">
+                                    {formatChatTime(c.lastMessageTimestamp)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between gap-2">
+                                  <p
+                                    className={`text-xs truncate ${
+                                      c.unreadCount > 0
+                                        ? "text-zinc-100 font-semibold"
+                                        : "text-zinc-400"
+                                    }`}
+                                  >
+                                    {c.lastMessageSnippet}
+                                  </p>
+                                  {c.unreadCount > 0 && (
+                                    <span className="bg-rose-500 text-white text-[10px] font-mono px-1.5 py-0.2 rounded-full shrink-0 shadow-[0_0_8px_rgba(244,63,94,0.6)]">
+                                      {c.unreadCount}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                    ) : (
+                      /* Empty state */
+                      <div className="py-10 flex flex-col items-center justify-center text-center">
+                        <div className="w-12 h-12 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-500 mb-3 shadow-sm">
+                          <MessageSquare className="w-6 h-6 text-zinc-400" />
+                        </div>
+                        <p className="text-xs font-semibold text-zinc-200">Belum ada obrolan</p>
+                        <p className="text-[11px] text-zinc-500 mt-1 max-w-xs">
+                          Mulai obrolan pribadi dengan mencari teman melalui nama atau username mereka.
+                        </p>
+                        <button
+                          onClick={() => setActiveTab("search")}
+                          className="mt-3.5 px-3.5 py-1.5 rounded-xl bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-semibold shadow-sm transition-transform active:scale-95 flex items-center gap-1.5"
+                        >
+                          <Search className="w-3.5 h-3.5" />
+                          <span>Cari Pengguna</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : activeTab === "create" ? (
                 <form onSubmit={handleCreateRoom} className="space-y-4">
                   <div>
                     <label className="block text-xs font-medium text-zinc-300 mb-1.5">
