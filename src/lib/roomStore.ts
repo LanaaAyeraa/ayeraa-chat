@@ -156,11 +156,23 @@ export function toggleReaction(
   userId: string,
   emoji: string
 ): Message | null {
-  const room = getRoom(roomId);
-  if (!room) return null;
+  const room = getOrCreateRoom(roomId);
 
-  const msg = room.messages.find((m) => m.id === messageId);
-  if (!msg) return null;
+  let msg = room.messages.find((m) => m.id === messageId);
+  if (!msg) {
+    msg = {
+      id: messageId,
+      roomId: room.id,
+      senderId: "participant",
+      senderName: "Chat Member",
+      senderAvatar: "💬",
+      content: "",
+      timestamp: Date.now(),
+      updatedAt: Date.now(),
+      reactions: {},
+    };
+    room.messages.push(msg);
+  }
 
   if (!msg.reactions[emoji]) {
     msg.reactions[emoji] = [];
@@ -183,8 +195,7 @@ export function toggleReaction(
 }
 
 export function setTypingStatus(roomId: string, userId: string, isTyping: boolean): void {
-  const room = getRoom(roomId);
-  if (!room) return;
+  const room = getOrCreateRoom(roomId);
 
   const p = room.participants[userId];
   if (p) {
@@ -204,8 +215,7 @@ export function getDelta(
   typingUsers: string[];
   serverTime: number;
 } | null {
-  const room = getRoom(roomId);
-  if (!room) return null;
+  const room = getOrCreateRoom(roomId);
 
   const now = Date.now();
 
