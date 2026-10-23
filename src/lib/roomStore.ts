@@ -2,11 +2,11 @@ import { Room, Participant, Message } from "@/types/chat";
 
 declare global {
   // eslint-disable-next-line no-var
-  var __havenChatRooms: Map<string, Room> | undefined;
+  var __ayeraaChatRooms: Map<string, Room> | undefined;
 }
 
-const rooms: Map<string, Room> = globalThis.__havenChatRooms ?? new Map<string, Room>();
-globalThis.__havenChatRooms = rooms;
+const rooms: Map<string, Room> = globalThis.__ayeraaChatRooms ?? new Map<string, Room>();
+globalThis.__ayeraaChatRooms = rooms;
 
 const PARTICIPANT_ACTIVE_TIMEOUT_MS = 90000; // 90s for presence dot
 const PARTICIPANT_EVICTION_TIMEOUT_MS = 3600000; // 1 hour retainment
@@ -34,7 +34,7 @@ export function getOrCreateRoom(roomId: string, roomName?: string, hostId = "sys
           id: `sys-${Date.now()}-welcome`,
           roomId: normalizedId,
           senderId: "system",
-          senderName: "Haven Keeper",
+          senderName: "Ayeraa Keeper",
           senderAvatar: "🕯️",
           content: `Welcome to **${roomName?.trim() || normalizedId}**! Share this link with friends to chat instantly.`,
           timestamp: Date.now(),
@@ -96,7 +96,7 @@ export function registerParticipant(
       id: `sys-${now}-${participant.id}`,
       roomId: room.id,
       senderId: "system",
-      senderName: "Haven Keeper",
+      senderName: "Ayeraa Keeper",
       senderAvatar: "🍃",
       content: `${participant.name} joined the room`,
       timestamp: now,

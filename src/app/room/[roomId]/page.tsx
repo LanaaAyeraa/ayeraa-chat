@@ -70,15 +70,16 @@ export default function RoomChatPage({ params }: RoomPageProps) {
   };
 
   useEffect(() => {
-    let uid = localStorage.getItem("havenchat_user_id");
+    let uid = localStorage.getItem("ayeraachat_user_id") || localStorage.getItem("havenchat_user_id");
     if (!uid) {
       uid = `u-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      localStorage.setItem("ayeraachat_user_id", uid);
       localStorage.setItem("havenchat_user_id", uid);
     }
     setUserId(uid);
 
-    const savedName = localStorage.getItem("havenchat_user_name") || "Anonymous Explorer";
-    const savedAvatar = localStorage.getItem("havenchat_user_avatar") || "⚡";
+    const savedName = localStorage.getItem("ayeraachat_user_name") || localStorage.getItem("havenchat_user_name") || "Anonymous Explorer";
+    const savedAvatar = localStorage.getItem("ayeraachat_user_avatar") || localStorage.getItem("havenchat_user_avatar") || "⚡";
     setUserName(savedName);
     setUserAvatar(savedAvatar);
     userNameRef.current = savedName;

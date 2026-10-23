@@ -6,7 +6,7 @@ class SoundManager {
 
   constructor() {
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("havenchat_sound_enabled");
+      const stored = localStorage.getItem("ayeraachat_sound_enabled") ?? localStorage.getItem("havenchat_sound_enabled");
       this.enabled = stored !== null ? stored === "true" : true;
     }
   }
@@ -32,7 +32,7 @@ class SoundManager {
   public setEnabled(val: boolean) {
     this.enabled = val;
     if (typeof window !== "undefined") {
-      localStorage.setItem("havenchat_sound_enabled", String(val));
+      localStorage.setItem("ayeraachat_sound_enabled", String(val));
     }
   }
 

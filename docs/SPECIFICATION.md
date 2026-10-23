@@ -1,13 +1,13 @@
-# HavenChat — Web Room Chat Specification & Architecture
-**Project**: HavenChat (Real-time Web Room Chat)  
+# Ayeraa Chat — Web Room Chat Specification & Architecture
+**Project**: Ayeraa Chat (Real-time Web Room Chat)  
 **Target Platform**: Vercel Serverless / Edge  
-**Design Standard**: Claude Aesthetic (Warm Editorial Minimalist — shadcn/ui)  
+**Design Standard**: shadcn/ui Dark Zinc × Amicro Micro-Transitions  
 **Alliance**: Antigravity × Hermes × OpenCode × OpenClaw × OMP (Penta-Engine)
 
 ---
 
 ## 1. Overview & Objectives
-HavenChat is a modern, frictionless, real-time web room chat application designed to run seamlessly on Vercel's serverless environment. Users can instantly create private or public chat rooms, share invite links, chat in real-time, view presence indicators, send reactions, quote messages, and toggle sound cues without mandatory login barriers.
+Ayeraa Chat is a modern, frictionless, real-time web room chat application designed to run seamlessly on Vercel's serverless environment. Users can instantly create private or public chat rooms, share invite links, chat in real-time, view presence indicators, send reactions, quote messages, and toggle sound cues without mandatory login barriers.
 
 ### Core Value Proposition
 - **Frictionless Entry**: 0-step barrier; enter display name, pick an avatar, and instantly jump into any room via shortcode or direct URL (`/room/[roomId]`).

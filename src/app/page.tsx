@@ -39,8 +39,8 @@ export default function HomePage() {
   useEffect(() => {
     setRoomSlug(generateRoomSlug());
 
-    const savedName = localStorage.getItem("havenchat_user_name");
-    const savedAvatar = localStorage.getItem("havenchat_user_avatar");
+    const savedName = localStorage.getItem("ayeraachat_user_name") || localStorage.getItem("havenchat_user_name");
+    const savedAvatar = localStorage.getItem("ayeraachat_user_avatar") || localStorage.getItem("havenchat_user_avatar");
     if (savedName) setName(savedName);
     if (savedAvatar) setAvatar(savedAvatar);
 
@@ -57,6 +57,8 @@ export default function HomePage() {
     const finalName = name.trim() || "Anonymous Explorer";
     const finalSlug = (roomSlug.trim() || generateRoomSlug()).toLowerCase();
 
+    localStorage.setItem("ayeraachat_user_name", finalName);
+    localStorage.setItem("ayeraachat_user_avatar", avatar);
     localStorage.setItem("havenchat_user_name", finalName);
     localStorage.setItem("havenchat_user_avatar", avatar);
 
@@ -86,6 +88,8 @@ export default function HomePage() {
     if (!joinCode.trim()) return;
 
     const finalName = name.trim() || "Anonymous Explorer";
+    localStorage.setItem("ayeraachat_user_name", finalName);
+    localStorage.setItem("ayeraachat_user_avatar", avatar);
     localStorage.setItem("havenchat_user_name", finalName);
     localStorage.setItem("havenchat_user_avatar", avatar);
 
@@ -106,7 +110,7 @@ export default function HomePage() {
               <MessageSquare className="w-4 h-4 fill-current" />
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-base tracking-tight text-zinc-100">HavenChat</span>
+              <span className="font-semibold text-base tracking-tight text-zinc-100">Ayeraa Chat</span>
               <span className="text-[10px] font-mono font-medium uppercase px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700/60">
                 shadcn × amicro
               </span>
@@ -361,7 +365,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t border-zinc-800/80 py-5 text-center text-xs text-zinc-500 bg-zinc-950">
         <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-2.5">
-          <p>© 2026 HavenChat • Engineered with shadcn/ui × Amicro Motion</p>
+          <p>© 2026 Ayeraa Chat • Engineered with shadcn/ui × Amicro Motion</p>
           <p className="font-mono text-[11px] text-zinc-500">
             Powered by Antigravity × Hermes × OpenCode × OpenClaw × OMP
           </p>

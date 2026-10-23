@@ -18,7 +18,7 @@ export function generateRoomSlug(): string {
     "gentle",
     "terracotta",
     "solaris",
-    "haven",
+    "ayeraa",
   ];
   const nouns = [
     "room",

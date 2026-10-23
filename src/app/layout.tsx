@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "HavenChat — Modern Real-Time Chat Rooms",
+  title: "Ayeraa Chat — Modern Real-Time Chat Rooms",
   description: "High-performance, frictionless real-time room chat powered by Next.js and Vercel serverless architecture.",
 };
 

@@ -11,7 +11,7 @@ import {
   _resetStoreForTesting,
 } from "../lib/roomStore";
 
-describe("HavenChat Room Store (Penta-Engine Business Logic)", () => {
+describe("Ayeraa Chat Room Store (Penta-Engine Business Logic)", () => {
   beforeEach(() => {
     _resetStoreForTesting();
   });
@@ -23,7 +23,7 @@ describe("HavenChat Room Store (Penta-Engine Business Logic)", () => {
     expect(room.name).toBe("Serene Hearth");
     expect(room.messages.length).toBe(1);
     expect(room.messages[0].isSystem).toBe(true);
-    expect(room.messages[0].senderName).toBe("Haven Keeper");
+    expect(room.messages[0].senderName).toBe("Ayeraa Keeper");
   });
 
   it("should register participant and record join event", () => {
@@ -53,11 +53,11 @@ describe("HavenChat Room Store (Penta-Engine Business Logic)", () => {
       senderId: "user-1",
       senderName: "Alice",
       senderAvatar: "🦊",
-      content: "Hello everyone in the haven!",
+      content: "Hello everyone in Ayeraa!",
     });
 
     expect(msg1.id).toBeDefined();
-    expect(msg1.content).toBe("Hello everyone in the haven!");
+    expect(msg1.content).toBe("Hello everyone in Ayeraa!");
     expect(msg1.reactions).toEqual({});
 
     // Bob replies to Alice
