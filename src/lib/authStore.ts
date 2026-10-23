@@ -60,6 +60,26 @@ function base64UrlDecode(str: string): string {
   return Buffer.from(base64, "base64").toString("utf8");
 }
 
+// Merge helper: LWW but NEVER drop passwordHash/salt credentials
+function mergeUser(existing: StoredUser | undefined, incoming: StoredUser): StoredUser {
+  if (!existing) return incoming;
+
+  const existingTs = existing.updatedAt || existing.createdAt || 0;
+  const incomingTs = incoming.updatedAt || incoming.createdAt || 0;
+
+  // Pick the newer record as base
+  const winner = incomingTs >= existingTs ? { ...incoming } : { ...existing };
+  const loser = incomingTs >= existingTs ? existing : incoming;
+
+  // Preserve credentials: if winner lost them, carry forward from loser
+  if (!winner.passwordHash && loser.passwordHash) {
+    winner.passwordHash = loser.passwordHash;
+    winner.salt = loser.salt;
+  }
+
+  return winner;
+}
+
 // Sync users from persistent storage into in-memory container maps (LWW merge)
 export async function syncUsersFromStorage(): Promise<void> {
   const users = getUsersMap();
@@ -71,11 +91,9 @@ export async function syncUsersFromStorage(): Promise<void> {
       const content = fs.readFileSync(TMP_USERS_FILE, "utf-8");
       const list: StoredUser[] = JSON.parse(content);
       for (const u of list) {
-        const existing = users.get(u.id);
-        if (!existing || (u.updatedAt || u.createdAt || 0) >= (existing.updatedAt || existing.createdAt || 0)) {
-          users.set(u.id, u);
-          usernames.set(u.username.toLowerCase(), u.id);
-        }
+        const merged = mergeUser(users.get(u.id), u);
+        users.set(merged.id, merged);
+        usernames.set(merged.username.toLowerCase(), merged.id);
       }
     }
   } catch {
@@ -94,11 +112,9 @@ export async function syncUsersFromStorage(): Promise<void> {
     if (res.ok) {
       const list: StoredUser[] = await res.json();
       for (const u of list) {
-        const existing = users.get(u.id);
-        if (!existing || (u.updatedAt || u.createdAt || 0) >= (existing.updatedAt || existing.createdAt || 0)) {
-          users.set(u.id, u);
-          usernames.set(u.username.toLowerCase(), u.id);
-        }
+        const merged = mergeUser(users.get(u.id), u);
+        users.set(merged.id, merged);
+        usernames.set(merged.username.toLowerCase(), merged.id);
       }
     }
   } catch {
@@ -123,16 +139,9 @@ export async function persistUsersToStorage(): Promise<void> {
     if (res.ok) {
       const remoteList: StoredUser[] = await res.json();
       for (const r of remoteList) {
-        const local = users.get(r.id);
-        if (!local) {
-          // User registered concurrently on another container
-          users.set(r.id, r);
-          usernames.set(r.username.toLowerCase(), r.id);
-        } else if ((r.updatedAt || r.createdAt || 0) > (local.updatedAt || local.createdAt || 0)) {
-          // Remote was updated more recently
-          users.set(r.id, r);
-          usernames.set(r.username.toLowerCase(), r.id);
-        }
+        const merged = mergeUser(users.get(r.id), r);
+        users.set(merged.id, merged);
+        usernames.set(merged.username.toLowerCase(), merged.id);
       }
     }
   } catch {
@@ -262,9 +271,13 @@ export function verifySessionToken(token: string): SessionTokenPayload | null {
         provider: payload.provider || "local",
         createdAt: payload.iat * 1000,
         updatedAt: Date.now(),
+        // Mark as restored-from-session so merge logic knows this has no credentials
       };
       users.set(payload.id, restoredUser);
       usernames.set(payload.username.toLowerCase(), payload.id);
+
+      // Async: pull full record from storage to recover passwordHash/salt
+      syncUsersFromStorage().catch(() => {});
     }
 
     return payload;
@@ -390,7 +403,11 @@ export async function loginUser(
 
   const stored = users.get(userId)!;
   if (!stored.passwordHash || !stored.salt) {
-    return { success: false, error: "Akun ini menggunakan metode login lain." };
+    if (stored.provider === "google") {
+      return { success: false, error: "Akun ini menggunakan login Google. Silakan masuk via Google." };
+    }
+    // Local account with missing credentials (data corruption recovery)
+    return { success: false, error: "Data password akun ini rusak. Silakan hubungi admin untuk reset password." };
   }
 
   const computedHash = hashPassword(passwordInput, stored.salt);
@@ -506,6 +523,53 @@ export async function updateUserProfile(
   users.set(userId, stored);
 
   // Persist update across containers
+  await persistUsersToStorage();
+
+  const publicUser = toPublicUser(stored);
+  const token = createSessionToken(publicUser);
+  const credentialToken = createCredentialToken(stored);
+
+  return {
+    success: true,
+    token,
+    credentialToken,
+    user: publicUser,
+  };
+}
+
+// Reset password for a local account (recovery for corrupted/missing credentials)
+export async function resetPassword(
+  usernameInput: string,
+  newPassword: string
+): Promise<AuthResponse> {
+  await syncUsersFromStorage();
+
+  const users = getUsersMap();
+  const usernames = getUsernamesMap();
+
+  const cleanUsername = usernameInput.trim().toLowerCase();
+  const userId = usernames.get(cleanUsername);
+
+  if (!userId || !users.has(userId)) {
+    return { success: false, error: "Username tidak ditemukan." };
+  }
+
+  const stored = users.get(userId)!;
+
+  if (stored.provider === "google") {
+    return { success: false, error: "Akun Google tidak menggunakan password." };
+  }
+
+  if (!newPassword || newPassword.length < 6) {
+    return { success: false, error: "Password baru minimal 6 karakter." };
+  }
+
+  const newSalt = generateSalt();
+  stored.salt = newSalt;
+  stored.passwordHash = hashPassword(newPassword, newSalt);
+  stored.updatedAt = Date.now();
+  users.set(userId, stored);
+
   await persistUsersToStorage();
 
   const publicUser = toPublicUser(stored);
