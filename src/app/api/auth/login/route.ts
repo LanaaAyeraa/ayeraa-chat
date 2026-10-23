@@ -4,7 +4,7 @@ import { loginUser } from "@/lib/authStore";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { username, password } = body;
+    const { username, password, credentialToken } = body;
 
     if (!username || !password) {
       return NextResponse.json(
@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = loginUser(username, password);
+    const result = loginUser(username, password, credentialToken);
 
     if (!result.success) {
       return NextResponse.json(
@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
     const response = NextResponse.json({
       success: true,
       token: result.token,
+      credentialToken: result.credentialToken,
       user: result.user,
     });
 

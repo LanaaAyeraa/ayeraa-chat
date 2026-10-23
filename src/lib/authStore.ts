@@ -52,6 +52,43 @@ function base64UrlDecode(str: string): string {
   return Buffer.from(base64, "base64").toString("utf8");
 }
 
+// Stateless signed credential token (Self-healing across serverless containers)
+export function createCredentialToken(storedUser: StoredUser): string {
+  const payload = {
+    id: storedUser.id,
+    username: storedUser.username,
+    name: storedUser.name,
+    avatar: storedUser.avatar,
+    bio: storedUser.bio,
+    provider: storedUser.provider,
+    passwordHash: storedUser.passwordHash,
+    salt: storedUser.salt,
+    createdAt: storedUser.createdAt,
+    iat: Math.floor(Date.now() / 1000),
+  };
+  const encoded = base64UrlEncode(JSON.stringify(payload));
+  const hmac = crypto.createHmac("sha256", AUTH_SECRET);
+  hmac.update(encoded);
+  const sig = base64UrlEncode(hmac.digest("base64"));
+  return `${encoded}.${sig}`;
+}
+
+export function verifyCredentialToken(credToken: string): StoredUser | null {
+  try {
+    if (!credToken || typeof credToken !== "string") return null;
+    const parts = credToken.split(".");
+    if (parts.length !== 2) return null;
+    const [encoded, sig] = parts;
+    const hmac = crypto.createHmac("sha256", AUTH_SECRET);
+    hmac.update(encoded);
+    const expected = base64UrlEncode(hmac.digest("base64"));
+    if (sig !== expected) return null;
+    return JSON.parse(base64UrlDecode(encoded));
+  } catch {
+    return null;
+  }
+}
+
 // Token creation (HMAC-SHA256)
 export function createSessionToken(user: User): string {
   const iat = Math.floor(Date.now() / 1000);
@@ -192,21 +229,37 @@ export function registerUser(
 
   const publicUser = toPublicUser(newUser);
   const token = createSessionToken(publicUser);
+  const credentialToken = createCredentialToken(newUser);
 
   return {
     success: true,
     token,
+    credentialToken,
     user: publicUser,
   };
 }
 
 // Login user
-export function loginUser(usernameInput: string, passwordInput: string): AuthResponse {
+export function loginUser(
+  usernameInput: string,
+  passwordInput: string,
+  credentialToken?: string
+): AuthResponse {
   const users = getUsersMap();
   const usernames = getUsernamesMap();
 
   const cleanUsername = usernameInput.trim().toLowerCase();
-  const userId = usernames.get(cleanUsername);
+  let userId = usernames.get(cleanUsername);
+
+  // Self-heal from client-grounded credential token if container restarted
+  if ((!userId || !users.has(userId)) && credentialToken) {
+    const recovered = verifyCredentialToken(credentialToken);
+    if (recovered && recovered.username.toLowerCase() === cleanUsername) {
+      userId = recovered.id;
+      users.set(userId, recovered);
+      usernames.set(cleanUsername, userId);
+    }
+  }
 
   if (!userId || !users.has(userId)) {
     return { success: false, error: "Username atau password salah." };
@@ -224,10 +277,12 @@ export function loginUser(usernameInput: string, passwordInput: string): AuthRes
 
   const publicUser = toPublicUser(stored);
   const token = createSessionToken(publicUser);
+  const freshCredentialToken = createCredentialToken(stored);
 
   return {
     success: true,
     token,
+    credentialToken: freshCredentialToken,
     user: publicUser,
   };
 }
@@ -294,10 +349,12 @@ export function updateUserProfile(
 
   const publicUser = toPublicUser(stored);
   const token = createSessionToken(publicUser);
+  const credentialToken = createCredentialToken(stored);
 
   return {
     success: true,
     token,
+    credentialToken,
     user: publicUser,
   };
 }
@@ -328,12 +385,12 @@ export function handleGoogleAuth(profile: {
     return {
       success: true,
       token: createSessionToken(publicUser),
+      credentialToken: createCredentialToken(existing),
       user: publicUser,
     };
   }
 
   // Create new google user
-  // Avoid username clash
   let counter = 1;
   while (usernames.has(username)) {
     username = `${baseUsername}${counter++}`;
@@ -357,6 +414,7 @@ export function handleGoogleAuth(profile: {
   return {
     success: true,
     token: createSessionToken(publicUser),
+    credentialToken: createCredentialToken(newUser),
     user: publicUser,
   };
 }

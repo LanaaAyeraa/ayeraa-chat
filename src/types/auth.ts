@@ -27,6 +27,7 @@ export interface SessionTokenPayload {
 export interface AuthResponse {
   success: boolean;
   token?: string;
+  credentialToken?: string;
   user?: User;
   error?: string;
 }

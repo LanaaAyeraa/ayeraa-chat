@@ -83,25 +83,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const handleAuthSuccess = useCallback((resultToken: string, resultUser: User) => {
+  const handleAuthSuccess = useCallback((resultToken: string, resultUser: User, credentialToken?: string) => {
     setToken(resultToken);
     setUser(resultUser);
     localStorage.setItem("ayeraa_token", resultToken);
     localStorage.setItem("ayeraa_user", JSON.stringify(resultUser));
     localStorage.setItem("ayeraachat_user_name", resultUser.name);
     localStorage.setItem("ayeraachat_user_avatar", resultUser.avatar);
+    if (credentialToken) {
+      localStorage.setItem(`ayeraa_cred_${resultUser.username.toLowerCase()}`, credentialToken);
+    }
   }, []);
 
   const login = async (username: string, password: string) => {
     try {
+      const cleanUser = username.trim().toLowerCase();
+      const cachedCred = localStorage.getItem(`ayeraa_cred_${cleanUser}`) || undefined;
+
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: cleanUser, password, credentialToken: cachedCred }),
       });
       const data: AuthResponse = await res.json();
       if (data.success && data.token && data.user) {
-        handleAuthSuccess(data.token, data.user);
+        handleAuthSuccess(data.token, data.user, data.credentialToken);
         return { success: true };
       }
       return { success: false, error: data.error || "Gagal masuk ke akun." };
@@ -118,14 +124,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     bio?: string
   ) => {
     try {
+      const cleanUser = username.trim().toLowerCase();
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password, name, avatar, bio }),
+        body: JSON.stringify({ username: cleanUser, password, name, avatar, bio }),
       });
       const data: AuthResponse = await res.json();
       if (data.success && data.token && data.user) {
-        handleAuthSuccess(data.token, data.user);
+        handleAuthSuccess(data.token, data.user, data.credentialToken);
         return { success: true };
       }
       return { success: false, error: data.error || "Gagal mendaftar akun baru." };
