@@ -5,6 +5,7 @@ export interface Participant {
   joinedAt: number;
   lastActiveAt: number;
   isTyping: boolean;
+  isOnline?: boolean;
 }
 
 export interface ReplyContext {

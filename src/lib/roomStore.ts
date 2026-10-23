@@ -6,12 +6,10 @@ declare global {
 }
 
 const rooms: Map<string, Room> = globalThis.__havenChatRooms ?? new Map<string, Room>();
-if (process.env.NODE_ENV !== "production") {
-  globalThis.__havenChatRooms = rooms;
-}
+globalThis.__havenChatRooms = rooms;
 
-const PARTICIPANT_ACTIVE_TIMEOUT_MS = 45000; // 45s for presence dot
-const PARTICIPANT_EVICTION_TIMEOUT_MS = 300000; // 5 min for garbage collection
+const PARTICIPANT_ACTIVE_TIMEOUT_MS = 90000; // 90s for presence dot
+const PARTICIPANT_EVICTION_TIMEOUT_MS = 3600000; // 1 hour retainment
 const MAX_MESSAGES_PER_ROOM = 500;
 const MAX_ROOMS = 100;
 
@@ -207,7 +205,9 @@ export function setTypingStatus(roomId: string, userId: string, isTyping: boolea
 export function getDelta(
   roomId: string,
   sinceTimestamp = 0,
-  currentUserId?: string
+  currentUserId?: string,
+  userName?: string,
+  userAvatar?: string
 ): {
   roomName: string;
   messages: Message[];
@@ -216,28 +216,58 @@ export function getDelta(
   serverTime: number;
 } | null {
   const room = getOrCreateRoom(roomId);
-
   const now = Date.now();
 
-  if (currentUserId && room.participants[currentUserId]) {
-    room.participants[currentUserId].lastActiveAt = now;
+  // Self-healing presence / heartbeat registration
+  if (currentUserId) {
+    const existing = room.participants[currentUserId];
+    if (existing) {
+      existing.lastActiveAt = now;
+      if (userName && userName !== existing.name) existing.name = userName;
+      if (userAvatar && userAvatar !== existing.avatar) existing.avatar = userAvatar;
+    } else if (userName) {
+      room.participants[currentUserId] = {
+        id: currentUserId,
+        name: userName,
+        avatar: userAvatar || "⚡",
+        joinedAt: now,
+        lastActiveAt: now,
+        isTyping: false,
+      };
+    }
   }
 
-  const activeParticipants: Participant[] = [];
+  const allParticipants: Participant[] = [];
   const typingUsers: string[] = [];
 
   for (const [id, p] of Object.entries(room.participants)) {
     const elapsed = now - p.lastActiveAt;
-    if (elapsed < PARTICIPANT_ACTIVE_TIMEOUT_MS) {
-      activeParticipants.push(p);
-      if (p.isTyping && p.id !== currentUserId) {
-        typingUsers.push(p.name);
-      }
-    } else if (elapsed > PARTICIPANT_EVICTION_TIMEOUT_MS && id !== room.hostId) {
-      // Memory cleanup: Evict dead participants after 5 minutes
+    const isOnline = elapsed < PARTICIPANT_ACTIVE_TIMEOUT_MS;
+
+    if (elapsed > PARTICIPANT_EVICTION_TIMEOUT_MS && id !== room.hostId) {
+      // Memory cleanup: Evict dead participants only after 1 hour of zero activity
       delete room.participants[id];
+      continue;
+    }
+
+    allParticipants.push({
+      ...p,
+      isOnline,
+    });
+
+    if (p.isTyping && isOnline && p.id !== currentUserId) {
+      typingUsers.push(p.name);
     }
   }
+
+  // Sort: current user first, then online users, then by lastActiveAt descending
+  allParticipants.sort((a, b) => {
+    if (a.id === currentUserId) return -1;
+    if (b.id === currentUserId) return 1;
+    if (a.isOnline && !b.isOnline) return -1;
+    if (!a.isOnline && b.isOnline) return 1;
+    return b.lastActiveAt - a.lastActiveAt;
+  });
 
   // Include messages created or reacted to since timestamp
   const newMessages = sinceTimestamp > 0
@@ -247,7 +277,7 @@ export function getDelta(
   return {
     roomName: room.name,
     messages: newMessages,
-    participants: activeParticipants,
+    participants: allParticipants,
     typingUsers,
     serverTime: now,
   };

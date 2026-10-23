@@ -57,6 +57,13 @@ export default function RoomChatPage({ params }: RoomPageProps) {
   const lastTimestampRef = useRef<number>(0);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const userNameRef = useRef<string>(userName);
+  const userAvatarRef = useRef<string>(userAvatar);
+
+  useEffect(() => {
+    userNameRef.current = userName;
+    userAvatarRef.current = userAvatar;
+  }, [userName, userAvatar]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -74,6 +81,8 @@ export default function RoomChatPage({ params }: RoomPageProps) {
     const savedAvatar = localStorage.getItem("havenchat_user_avatar") || "⚡";
     setUserName(savedName);
     setUserAvatar(savedAvatar);
+    userNameRef.current = savedName;
+    userAvatarRef.current = savedAvatar;
     setSoundEnabled(sound.isEnabled());
 
     fetch(`/api/rooms/${roomId}/join`, {
@@ -89,7 +98,25 @@ export default function RoomChatPage({ params }: RoomPageProps) {
       .then((data) => {
         if (data.success) {
           setRoomName(data.room.name);
-          setParticipants(data.room.participants);
+          const incoming = (data.room.participants as Participant[]) || [];
+          setParticipants((prev) => {
+            const map = new Map<string, Participant>();
+            for (const p of incoming) {
+              map.set(p.id, { ...p, isOnline: true });
+            }
+            if (!map.has(uid)) {
+              map.set(uid, {
+                id: uid,
+                name: savedName,
+                avatar: savedAvatar,
+                joinedAt: Date.now(),
+                lastActiveAt: Date.now(),
+                isTyping: false,
+                isOnline: true,
+              });
+            }
+            return Array.from(map.values());
+          });
           setHasJoined(true);
         }
       })
@@ -103,18 +130,88 @@ export default function RoomChatPage({ params }: RoomPageProps) {
     const fetchDelta = async () => {
       try {
         const since = lastTimestampRef.current;
-        const res = await fetch(
-          `/api/rooms/${roomId}/poll?since=${since}&userId=${encodeURIComponent(userId)}`
-        );
+        const currentName = userNameRef.current || userName;
+        const currentAvatar = userAvatarRef.current || userAvatar;
+        const queryParams = new URLSearchParams({
+          since: since.toString(),
+          userId,
+          userName: currentName,
+          userAvatar: currentAvatar,
+        });
+
+        const res = await fetch(`/api/rooms/${roomId}/poll?${queryParams.toString()}`);
         if (!res.ok) return;
 
         const data = await res.json();
         if (data.success) {
           if (data.roomName) setRoomName(data.roomName);
-          if (data.participants) setParticipants(data.participants);
+          
+          if (data.participants) {
+            setParticipants((prev) => {
+              const map = new Map<string, Participant>();
+
+              // 1. Preserve previously known participants (set isOnline to false as fallback)
+              for (const p of prev) {
+                map.set(p.id, { ...p, isOnline: false });
+              }
+
+              // 2. Overlay incoming participants from server
+              for (const inc of data.participants as Participant[]) {
+                map.set(inc.id, {
+                  ...inc,
+                  isOnline: inc.isOnline !== undefined ? inc.isOnline : true,
+                });
+              }
+
+              // 3. Current user MUST ALWAYS be online on their own client
+              const existingMe = map.get(userId);
+              map.set(userId, {
+                id: userId,
+                name: currentName || existingMe?.name || "You",
+                avatar: currentAvatar || existingMe?.avatar || "⚡",
+                joinedAt: existingMe?.joinedAt || Date.now(),
+                lastActiveAt: Date.now(),
+                isTyping: existingMe?.isTyping || false,
+                isOnline: true,
+              });
+
+              // 4. Stable sort: You first, then online users, then others
+              return Array.from(map.values()).sort((a, b) => {
+                if (a.id === userId) return -1;
+                if (b.id === userId) return 1;
+                const aOnline = a.isOnline !== false;
+                const bOnline = b.isOnline !== false;
+                if (aOnline && !bOnline) return -1;
+                if (!aOnline && bOnline) return 1;
+                return b.lastActiveAt - a.lastActiveAt;
+              });
+            });
+          }
+
           if (data.typingUsers) setTypingUsers(data.typingUsers);
 
           if (data.messages && data.messages.length > 0) {
+            // Guarantee any message sender is also registered in participants map
+            setParticipants((prev) => {
+              let changed = false;
+              const map = new Map(prev.map((p) => [p.id, p]));
+              for (const msg of data.messages as Message[]) {
+                if (!msg.isSystem && msg.senderId && !map.has(msg.senderId)) {
+                  map.set(msg.senderId, {
+                    id: msg.senderId,
+                    name: msg.senderName,
+                    avatar: msg.senderAvatar,
+                    joinedAt: msg.timestamp,
+                    lastActiveAt: msg.timestamp,
+                    isTyping: false,
+                    isOnline: Date.now() - msg.timestamp < 90000,
+                  });
+                  changed = true;
+                }
+              }
+              return changed ? Array.from(map.values()) : prev;
+            });
+
             setMessages((prev) => {
               const map = new Map(prev.map((m) => [m.id, m]));
               let hasNewIncoming = false;
@@ -287,13 +384,15 @@ export default function RoomChatPage({ params }: RoomPageProps) {
     setSoundEnabled(nextVal);
   };
 
+  const onlineCount = Math.max(1, participants.filter((p) => p.isOnline !== false).length);
+
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-100 overflow-hidden selection:bg-zinc-800 relative">
       {/* Amicro Top Dynamic Island Component */}
       <DynamicIsland
         roomName={roomName}
         roomId={roomId}
-        memberCount={participants.length}
+        memberCount={onlineCount}
         soundEnabled={soundEnabled}
         onToggleSound={toggleSound}
         onCopyLink={handleCopyLink}
@@ -338,13 +437,14 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                 <span>Members</span>
               </div>
               <span className="text-[11px] font-mono bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-full">
-                {participants.length}
+                {onlineCount} online
               </span>
             </div>
 
             <div className="space-y-1 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
               {participants.map((p) => {
                 const isMe = p.id === userId;
+                const isOnline = p.isOnline !== false;
                 return (
                   <div
                     key={p.id}
@@ -355,20 +455,30 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                     <div className="flex items-center gap-2.5 truncate">
                       <div className="relative">
                         <span className="text-base transition-transform hover:scale-110 cursor-default">{p.avatar}</span>
-                        <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-zinc-900 shadow-[0_0_6px_rgba(16,185,129,0.8)]"></span>
+                        <span
+                          className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-zinc-900 ${
+                            isOnline
+                              ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]"
+                              : "bg-zinc-500"
+                          }`}
+                        ></span>
                       </div>
                       <div className="truncate">
                         <p className="text-xs font-medium truncate flex items-center gap-1.5">
-                          <span className="truncate">{p.name}</span>
+                          <span className={`truncate ${isOnline ? "text-zinc-200" : "text-zinc-400"}`}>{p.name}</span>
                           {isMe && (
                             <span className="text-[10px] font-mono text-zinc-400 bg-zinc-950 px-1 rounded">
                               you
                             </span>
                           )}
                         </p>
-                        {p.isTyping && (
+                        {p.isTyping ? (
                           <p className="text-[10px] text-indigo-400 italic animate-pulse">
                             typing...
+                          </p>
+                        ) : (
+                          <p className="text-[10px] text-zinc-500 font-mono">
+                            {isOnline ? "online" : "away"}
                           </p>
                         )}
                       </div>
@@ -415,7 +525,7 @@ export default function RoomChatPage({ params }: RoomPageProps) {
               </h1>
               <p className="text-[10px] text-zinc-400 flex items-center gap-1 font-mono">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                {participants.length} online
+                {onlineCount} online
               </p>
             </div>
           </div>

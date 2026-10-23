@@ -126,4 +126,15 @@ describe("HavenChat Room Store (Penta-Engine Business Logic)", () => {
     const alpha = rooms.find((r) => r.id === "room-alpha");
     expect(alpha?.participantsCount).toBe(1);
   });
+
+  it("should self-heal participant presence on getDelta call", () => {
+    const roomId = "heal-sanctum-999";
+    // getDelta with a new user that hasn't called join yet on this instance
+    const delta = getDelta(roomId, 0, "ghost-user", "Ghost Walker", "👻");
+    expect(delta).toBeDefined();
+    expect(delta?.participants.length).toBe(1);
+    expect(delta?.participants[0].id).toBe("ghost-user");
+    expect(delta?.participants[0].name).toBe("Ghost Walker");
+    expect(delta?.participants[0].isOnline).toBe(true);
+  });
 });

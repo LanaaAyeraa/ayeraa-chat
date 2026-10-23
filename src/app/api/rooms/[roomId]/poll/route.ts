@@ -14,8 +14,10 @@ export async function GET(
     const { searchParams } = new URL(req.url);
     const since = parseInt(searchParams.get("since") || "0", 10);
     const userId = searchParams.get("userId") || undefined;
+    const userName = searchParams.get("userName") || undefined;
+    const userAvatar = searchParams.get("userAvatar") || undefined;
 
-    const delta = getDelta(roomId, since, userId);
+    const delta = getDelta(roomId, since, userId, userName, userAvatar);
 
     if (!delta) {
       return NextResponse.json(
