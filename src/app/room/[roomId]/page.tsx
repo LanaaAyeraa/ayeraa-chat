@@ -509,6 +509,8 @@ export default function RoomChatPage({ params }: RoomPageProps) {
       })
     );
 
+    const currentMsg = messages.find((m) => m.id === messageId);
+
     try {
       await fetch(`/api/rooms/${roomId}/reactions`, {
         method: "POST",
@@ -517,6 +519,7 @@ export default function RoomChatPage({ params }: RoomPageProps) {
           messageId,
           userId,
           emoji,
+          currentReactions: currentMsg?.reactions || undefined,
         }),
       });
     } catch {

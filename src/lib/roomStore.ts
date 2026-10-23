@@ -154,7 +154,8 @@ export function toggleReaction(
   roomId: string,
   messageId: string,
   userId: string,
-  emoji: string
+  emoji: string,
+  clientReactions?: Record<string, string[]>
 ): Message | null {
   const room = getOrCreateRoom(roomId);
 
@@ -169,9 +170,11 @@ export function toggleReaction(
       content: "",
       timestamp: Date.now(),
       updatedAt: Date.now(),
-      reactions: {},
+      reactions: clientReactions ? { ...clientReactions } : {},
     };
     room.messages.push(msg);
+  } else if (clientReactions && Object.keys(msg.reactions).length === 0 && Object.keys(clientReactions).length > 0) {
+    msg.reactions = { ...clientReactions };
   }
 
   if (!msg.reactions[emoji]) {

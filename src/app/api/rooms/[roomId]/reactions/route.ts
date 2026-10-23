@@ -20,7 +20,13 @@ export async function POST(
       );
     }
 
-    const updatedMessage = toggleReaction(roomId, body.messageId, body.userId, body.emoji);
+    const updatedMessage = toggleReaction(
+      roomId,
+      body.messageId,
+      body.userId,
+      body.emoji,
+      body.currentReactions
+    );
 
     if (!updatedMessage) {
       return NextResponse.json(

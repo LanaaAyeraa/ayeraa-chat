@@ -172,7 +172,8 @@ def run_hardtest():
     status, r2, _ = request_json(f"{BASE_URL}/api/rooms/{room_id}/reactions", "POST", {
         "messageId": target_msg_id,
         "userId": f"u-bob-{test_run_id}",
-        "emoji": "❤️"
+        "emoji": "❤️",
+        "currentReactions": r1["message"]["reactions"]
     })
     assert len(r2["message"]["reactions"]["❤️"]) == 2
 
@@ -180,7 +181,8 @@ def run_hardtest():
     status, r3, _ = request_json(f"{BASE_URL}/api/rooms/{room_id}/reactions", "POST", {
         "messageId": target_msg_id,
         "userId": f"u-alice-{test_run_id}",
-        "emoji": "❤️"
+        "emoji": "❤️",
+        "currentReactions": r2["message"]["reactions"]
     })
     assert len(r3["message"]["reactions"]["❤️"]) == 1
 
@@ -188,7 +190,8 @@ def run_hardtest():
     status, r4, _ = request_json(f"{BASE_URL}/api/rooms/{room_id}/reactions", "POST", {
         "messageId": target_msg_id,
         "userId": f"u-bob-{test_run_id}",
-        "emoji": "❤️"
+        "emoji": "❤️",
+        "currentReactions": r3["message"]["reactions"]
     })
     assert "❤️" not in r4["message"]["reactions"], "Zero-count reaction was not pruned!"
     print("✅ TEST 6 PASSED: Reactions toggled and pruned when empty.")
