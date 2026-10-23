@@ -14,8 +14,9 @@ import {
   Smile,
   CornerDownRight,
   X,
-  Compass,
   Sparkles,
+  Hash,
+  Activity,
   Circle,
 } from "lucide-react";
 import { Message, Participant, ReplyContext } from "@/types/chat";
@@ -35,7 +36,7 @@ export default function RoomChatPage({ params }: RoomPageProps) {
   // User State
   const [userId, setUserId] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
-  const [userAvatar, setUserAvatar] = useState<string>("☕");
+  const [userAvatar, setUserAvatar] = useState<string>("⚡");
   const [hasJoined, setHasJoined] = useState(false);
 
   // Room State
@@ -58,7 +59,6 @@ export default function RoomChatPage({ params }: RoomPageProps) {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Scroll to bottom smoothly
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -72,13 +72,12 @@ export default function RoomChatPage({ params }: RoomPageProps) {
     }
     setUserId(uid);
 
-    const savedName = localStorage.getItem("havenchat_user_name") || "Gentle Traveler";
-    const savedAvatar = localStorage.getItem("havenchat_user_avatar") || "☕";
+    const savedName = localStorage.getItem("havenchat_user_name") || "Anonymous Explorer";
+    const savedAvatar = localStorage.getItem("havenchat_user_avatar") || "⚡";
     setUserName(savedName);
     setUserAvatar(savedAvatar);
     setSoundEnabled(sound.isEnabled());
 
-    // Register user in the room
     fetch(`/api/rooms/${roomId}/join`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -126,7 +125,7 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                 if (!map.has(inc.id) && inc.senderId !== userId && !inc.isSystem) {
                   hasNewIncoming = true;
                 }
-                map.set(inc.id, inc); // update in place or append
+                map.set(inc.id, inc);
               }
 
               if (hasNewIncoming) {
@@ -136,7 +135,6 @@ export default function RoomChatPage({ params }: RoomPageProps) {
               return Array.from(map.values()).sort((a, b) => a.timestamp - b.timestamp);
             });
 
-            // Update timestamp checkpoint based on latest creation or reaction touch
             const maxTs = Math.max(
               ...data.messages.map((m: Message) => Math.max(m.timestamp, m.updatedAt || 0)),
               lastTimestampRef.current
@@ -146,13 +144,12 @@ export default function RoomChatPage({ params }: RoomPageProps) {
           }
         }
       } catch {
-        // graceful silent backoff on network drop
+        // silent recovery
       }
     };
 
     fetchDelta();
 
-    // Adaptive interval: 1.5s when focused, 5s when tab backgrounded
     let intervalTime = 1500;
     const startPolling = () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
@@ -173,7 +170,6 @@ export default function RoomChatPage({ params }: RoomPageProps) {
     };
   }, [hasJoined, roomId, userId]);
 
-  // Handle typing signal
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputText(e.target.value);
 
@@ -197,7 +193,6 @@ export default function RoomChatPage({ params }: RoomPageProps) {
     }, 2000);
   };
 
-  // Send Message
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const content = inputText.trim();
@@ -208,7 +203,6 @@ export default function RoomChatPage({ params }: RoomPageProps) {
     const reply = replyTarget;
     setReplyTarget(null);
 
-    // reset typing state immediately
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     setIsTyping(false);
 
@@ -240,16 +234,14 @@ export default function RoomChatPage({ params }: RoomPageProps) {
         setTimeout(scrollToBottom, 60);
       }
     } catch {
-      // optimistic message could be handled if offline
+      // recovery
     }
   };
 
-  // Toggle Reaction
   const handleToggleReaction = async (messageId: string, emoji: string) => {
     sound.playReaction();
     setShowEmojiPicker(null);
 
-    // Optimistic UI update
     setMessages((prev) =>
       prev.map((msg) => {
         if (msg.id !== messageId) return msg;
@@ -265,7 +257,7 @@ export default function RoomChatPage({ params }: RoomPageProps) {
         } else {
           delete nextReactions[emoji];
         }
-        return { ...msg, reactions: nextReactions };
+        return { ...msg, reactions: nextReactions, updatedAt: Date.now() };
       })
     );
 
@@ -284,7 +276,6 @@ export default function RoomChatPage({ params }: RoomPageProps) {
     }
   };
 
-  // Copy Invite Link
   const handleCopyLink = () => {
     const url = window.location.href;
     navigator.clipboard.writeText(url);
@@ -292,7 +283,6 @@ export default function RoomChatPage({ params }: RoomPageProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Toggle Sound
   const toggleSound = () => {
     const nextVal = !soundEnabled;
     sound.setEnabled(nextVal);
@@ -300,74 +290,75 @@ export default function RoomChatPage({ params }: RoomPageProps) {
   };
 
   return (
-    <div className="flex h-screen bg-[#FAF9F5] text-[#1F1E1D] overflow-hidden selection:bg-[#CC5A37]/20">
-      {/* Left Sidebar (Desktop) */}
-      <aside className="w-80 border-r border-[#E5E3DC] bg-white flex flex-col justify-between hidden md:flex shrink-0">
+    <div className="flex h-screen bg-zinc-950 text-zinc-100 overflow-hidden selection:bg-zinc-800">
+      {/* Left Sidebar (Desktop shadcn panel) */}
+      <aside className="w-72 border-r border-zinc-800 bg-zinc-900/60 flex flex-col justify-between hidden md:flex shrink-0 backdrop-blur-md">
         <div>
           {/* Room Header Info */}
-          <div className="p-5 border-b border-[#EFECE6]">
+          <div className="p-4 border-b border-zinc-800">
             <Link
               href="/"
-              className="inline-flex items-center gap-1.5 text-xs text-[#6F6D66] hover:text-[#CC5A37] transition-colors mb-3"
+              className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors mb-3"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to Sanctuary</span>
+              <span>All Rooms</span>
             </Link>
-            <h2 className="font-serif text-xl font-bold text-[#1F1E1D] tracking-tight truncate">
-              {roomName}
+            <h2 className="font-semibold text-base text-zinc-100 tracking-tight truncate flex items-center gap-1.5">
+              <Hash className="w-4 h-4 text-zinc-500 shrink-0" />
+              <span className="truncate">{roomName}</span>
             </h2>
-            <div className="mt-2 flex items-center justify-between">
-              <span className="font-mono text-xs bg-[#FAF9F5] border border-[#E5E3DC] px-2.5 py-1 rounded-md text-[#6F6D66] truncate max-w-[180px]">
+            <div className="mt-2.5 flex items-center justify-between gap-2">
+              <span className="font-mono text-[11px] bg-zinc-950 border border-zinc-800 px-2 py-0.5 rounded-md text-zinc-400 truncate max-w-[150px]">
                 {roomId}
               </span>
               <button
                 onClick={handleCopyLink}
-                className="inline-flex items-center gap-1 text-xs text-[#CC5A37] hover:underline"
+                className="inline-flex items-center gap-1 text-xs text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700/80 px-2.5 py-1 rounded-md transition-colors"
               >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copied ? "Copied" : "Invite"}</span>
               </button>
             </div>
           </div>
 
           {/* Participants Presence List */}
-          <div className="p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-[#6F6D66]">
-                <Users className="w-3.5 h-3.5 text-[#CC5A37]" />
-                <span>Present in Room</span>
+          <div className="p-4">
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                <Users className="w-3.5 h-3.5 text-zinc-500" />
+                <span>Members</span>
               </div>
-              <span className="text-xs bg-[#F7ECE6] text-[#CC5A37] font-semibold px-2 py-0.5 rounded-full">
+              <span className="text-[11px] font-mono bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-full">
                 {participants.length}
               </span>
             </div>
 
-            <div className="space-y-2 max-h-[calc(100vh-320px)] overflow-y-auto pr-1">
+            <div className="space-y-1 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
               {participants.map((p) => {
                 const isMe = p.id === userId;
                 return (
                   <div
                     key={p.id}
-                    className={`flex items-center justify-between p-2 rounded-xl transition-all ${
-                      isMe ? "bg-[#FAF9F5] border border-[#E5E3DC]" : "hover:bg-[#FAF9F5]"
+                    className={`flex items-center justify-between p-2 rounded-lg transition-colors ${
+                      isMe ? "bg-zinc-800/80 text-zinc-100" : "hover:bg-zinc-850 text-zinc-300 hover:text-zinc-100"
                     }`}
                   >
                     <div className="flex items-center gap-2.5 truncate">
                       <div className="relative">
-                        <span className="text-lg">{p.avatar}</span>
-                        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white"></span>
+                        <span className="text-base">{p.avatar}</span>
+                        <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-zinc-900"></span>
                       </div>
                       <div className="truncate">
-                        <p className="text-sm font-medium text-[#1F1E1D] truncate flex items-center gap-1.5">
-                          <span>{p.name}</span>
+                        <p className="text-xs font-medium truncate flex items-center gap-1.5">
+                          <span className="truncate">{p.name}</span>
                           {isMe && (
-                            <span className="text-[10px] font-mono text-[#CC5A37] bg-[#F7ECE6] px-1.5 py-0.2 rounded">
+                            <span className="text-[10px] font-mono text-zinc-400 bg-zinc-950 px-1 rounded">
                               you
                             </span>
                           )}
                         </p>
                         {p.isTyping && (
-                          <p className="text-[11px] text-[#CC5A37] italic animate-pulse">
+                          <p className="text-[10px] text-indigo-400 italic animate-pulse">
                             typing...
                           </p>
                         )}
@@ -381,82 +372,82 @@ export default function RoomChatPage({ params }: RoomPageProps) {
         </div>
 
         {/* Sidebar Footer Controls */}
-        <div className="p-4 border-t border-[#EFECE6] bg-[#FAF9F5]/50 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="p-3.5 border-t border-zinc-800 bg-zinc-950/80 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 truncate">
             <span className="text-lg">{userAvatar}</span>
             <div className="text-xs truncate max-w-[120px]">
-              <p className="font-medium text-[#1F1E1D] truncate">{userName}</p>
-              <p className="text-[10px] text-emerald-600 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Connected
+              <p className="font-medium text-zinc-200 truncate">{userName}</p>
+              <p className="text-[10px] text-emerald-400 flex items-center gap-1 font-mono">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online
               </p>
             </div>
           </div>
           <button
             onClick={toggleSound}
-            title={soundEnabled ? "Mute chimes" : "Enable chimes"}
-            className="p-2 rounded-lg text-[#6F6D66] hover:bg-white hover:text-[#1F1E1D] border border-transparent hover:border-[#E5E3DC] transition-all"
+            title={soundEnabled ? "Mute audio" : "Enable audio"}
+            className="p-1.5 rounded-md text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
           >
-            {soundEnabled ? <Volume2 className="w-4 h-4 text-[#CC5A37]" /> : <VolumeX className="w-4 h-4" />}
+            {soundEnabled ? <Volume2 className="w-4 h-4 text-zinc-300" /> : <VolumeX className="w-4 h-4" />}
           </button>
         </div>
       </aside>
 
       {/* Main Chat Workspace */}
-      <div className="flex-1 flex flex-col h-full bg-[#FAF9F5] relative">
-        {/* Mobile Header */}
-        <header className="h-14 border-b border-[#E5E3DC] bg-white flex items-center justify-between px-4 md:hidden shrink-0">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="text-[#6F6D66] hover:text-[#1F1E1D]">
+      <div className="flex-1 flex flex-col h-full bg-zinc-950 relative">
+        {/* Mobile Navbar Header */}
+        <header className="h-14 border-b border-zinc-800 bg-zinc-900/80 flex items-center justify-between px-4 md:hidden shrink-0 backdrop-blur-md">
+          <div className="flex items-center gap-2.5">
+            <Link href="/" className="text-zinc-400 hover:text-zinc-100">
               <ArrowLeft className="w-4 h-4" />
             </Link>
             <div>
-              <h1 className="font-serif font-bold text-sm text-[#1F1E1D] truncate max-w-[160px]">
+              <h1 className="font-semibold text-sm text-zinc-100 truncate max-w-[150px]">
                 {roomName}
               </h1>
-              <p className="text-[10px] text-[#6F6D66] flex items-center gap-1">
+              <p className="text-[10px] text-zinc-400 flex items-center gap-1 font-mono">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                {participants.length} present
+                {participants.length} online
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleCopyLink}
-              className="p-2 text-xs bg-[#FAF9F5] border border-[#E5E3DC] rounded-lg text-[#CC5A37]"
+              className="p-1.5 text-xs bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-200"
             >
-              {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+              {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
             </button>
             <button
               onClick={toggleSound}
-              className="p-2 text-xs bg-[#FAF9F5] border border-[#E5E3DC] rounded-lg text-[#6F6D66]"
+              className="p-1.5 text-xs bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-400"
             >
-              {soundEnabled ? <Volume2 className="w-4 h-4 text-[#CC5A37]" /> : <VolumeX className="w-4 h-4" />}
+              {soundEnabled ? <Volume2 className="w-4 h-4 text-zinc-200" /> : <VolumeX className="w-4 h-4" />}
             </button>
           </div>
         </header>
 
-        {/* Messages Stream Area */}
+        {/* Message Timeline */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-          {/* Room Welcome Banner */}
-          <div className="text-center py-6 border-b border-[#EFECE6] max-w-lg mx-auto">
-            <div className="w-10 h-10 rounded-2xl bg-[#F7ECE6] text-[#CC5A37] flex items-center justify-center mx-auto mb-2 shadow-sm">
-              <Sparkles className="w-5 h-5" />
+          {/* Welcome Card Banner */}
+          <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-5 max-w-md mx-auto text-center shadow-sm">
+            <div className="w-9 h-9 rounded-xl bg-zinc-800 text-zinc-200 flex items-center justify-center mx-auto mb-2.5">
+              <Sparkles className="w-4 h-4 text-indigo-400" />
             </div>
-            <h3 className="font-serif font-bold text-lg text-[#1F1E1D]">{roomName}</h3>
-            <p className="text-xs text-[#6F6D66] mt-1">
-              All messages are shared in real-time. Invite others with code:{" "}
-              <span className="font-mono font-bold text-[#CC5A37]">{roomId}</span>
+            <h3 className="font-semibold text-sm text-zinc-100">{roomName}</h3>
+            <p className="text-xs text-zinc-400 mt-1">
+              Real-time room stream active. Invite your peers with code:{" "}
+              <span className="font-mono font-semibold text-zinc-200">{roomId}</span>
             </p>
           </div>
 
-          {/* Messages Loop */}
+          {/* Messages Stream */}
           {messages.map((msg) => {
             const isMe = msg.senderId === userId;
 
             if (msg.isSystem) {
               return (
                 <div key={msg.id} className="flex justify-center my-2">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EFECE6]/60 border border-[#E5E3DC] text-xs text-[#6F6D66]">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900/70 border border-zinc-800 text-xs text-zinc-400 font-mono">
                     <span>{msg.senderAvatar}</span>
                     <span>{msg.content}</span>
                   </div>
@@ -467,54 +458,53 @@ export default function RoomChatPage({ params }: RoomPageProps) {
             return (
               <div
                 key={msg.id}
-                className={`group flex items-start gap-3 ${
+                className={`group flex items-start gap-2.5 ${
                   isMe ? "flex-row-reverse" : "flex-row"
                 }`}
               >
                 {/* Avatar */}
-                <div className="w-9 h-9 rounded-xl bg-white border border-[#E5E3DC] flex items-center justify-center text-lg shrink-0 shadow-sm mt-0.5">
+                <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-sm shrink-0 shadow-sm mt-0.5">
                   {msg.senderAvatar}
                 </div>
 
-                {/* Message Bubble Container */}
-                <div className={`max-w-[82%] sm:max-w-md ${isMe ? "items-end text-right" : "items-start text-left"}`}>
-                  {/* Sender & Timestamp */}
+                {/* Bubble Container */}
+                <div className={`max-w-[85%] sm:max-w-md ${isMe ? "items-end text-right" : "items-start text-left"}`}>
                   <div className={`flex items-center gap-2 mb-1 px-1 ${isMe ? "justify-end" : "justify-start"}`}>
-                    <span className="text-xs font-semibold text-[#1F1E1D]">{msg.senderName}</span>
-                    <span className="text-[10px] text-[#9B988F] font-mono">
+                    <span className="text-xs font-medium text-zinc-300">{msg.senderName}</span>
+                    <span className="text-[10px] text-zinc-500 font-mono">
                       {formatTimestamp(msg.timestamp)}
                     </span>
                   </div>
 
-                  {/* Quoted Reply Target Preview */}
+                  {/* Quoted Reply */}
                   {msg.replyTo && (
                     <div
-                      className={`text-xs p-2 rounded-lg mb-1 border-l-2 bg-[#FAF9F5] border-[#CC5A37] text-[#6F6D66] ${
+                      className={`text-xs p-2 rounded-lg mb-1 border-l-2 bg-zinc-900 border-zinc-500 text-zinc-400 ${
                         isMe ? "text-right" : "text-left"
                       }`}
                     >
-                      <p className="font-medium text-[11px] text-[#CC5A37]">
+                      <p className="font-medium text-[11px] text-zinc-300">
                         Replying to {msg.replyTo.senderName}
                       </p>
-                      <p className="truncate italic text-[11px] mt-0.5">{msg.replyTo.content}</p>
+                      <p className="truncate text-[11px] mt-0.5 text-zinc-400">{msg.replyTo.content}</p>
                     </div>
                   )}
 
-                  {/* Bubble Content */}
+                  {/* Message Bubble (shadcn standard) */}
                   <div
-                    className={`relative p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm transition-all ${
+                    className={`relative px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm transition-colors ${
                       isMe
-                        ? "bg-[#CC5A37] text-white rounded-tr-none"
-                        : "bg-white text-[#1F1E1D] border border-[#E5E3DC] rounded-tl-none"
+                        ? "bg-zinc-100 text-zinc-950 rounded-tr-sm font-normal"
+                        : "bg-zinc-900 text-zinc-100 border border-zinc-800 rounded-tl-sm"
                     }`}
                   >
                     <p className="whitespace-pre-wrap break-words">{msg.content}</p>
 
-                    {/* Hover Action Bar */}
+                    {/* Floating Hover Actions (shadcn tooltip style) */}
                     <div
                       className={`absolute -top-3.5 ${
                         isMe ? "left-2" : "right-2"
-                      } hidden group-hover:flex items-center gap-1 bg-white border border-[#E5E3DC] px-1.5 py-0.5 rounded-full shadow-warm z-10`}
+                      } hidden group-hover:flex items-center gap-1 bg-zinc-900 border border-zinc-700/80 px-2 py-0.5 rounded-full shadow-xl z-10`}
                     >
                       {POPULAR_REACTIONS.slice(0, 3).map((em) => (
                         <button
@@ -529,7 +519,7 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                         onClick={() =>
                           setShowEmojiPicker(showEmojiPicker === msg.id ? null : msg.id)
                         }
-                        className="text-[#6F6D66] hover:text-[#1F1E1D] text-xs px-1"
+                        className="text-zinc-400 hover:text-zinc-200 text-xs px-1"
                         title="More emojis"
                       >
                         <Smile className="w-3 h-3" />
@@ -542,25 +532,25 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                             content: msg.content,
                           })
                         }
-                        className="text-[#6F6D66] hover:text-[#CC5A37] text-xs px-1"
+                        className="text-zinc-400 hover:text-zinc-200 text-xs px-1"
                         title="Reply"
                       >
                         <CornerDownRight className="w-3 h-3" />
                       </button>
                     </div>
 
-                    {/* Popover Emoji Picker */}
+                    {/* Emoji Popover */}
                     {showEmojiPicker === msg.id && (
                       <div
                         className={`absolute top-full mt-2 ${
                           isMe ? "left-0" : "right-0"
-                        } bg-white border border-[#E5E3DC] p-2 rounded-xl shadow-warmLg flex gap-1.5 z-20`}
+                        } bg-zinc-900 border border-zinc-700 p-2 rounded-xl shadow-2xl flex gap-1.5 z-20`}
                       >
                         {POPULAR_REACTIONS.map((em) => (
                           <button
                             key={em}
                             onClick={() => handleToggleReaction(msg.id, em)}
-                            className="text-base hover:scale-125 transition-transform p-1 rounded hover:bg-[#FAF9F5]"
+                            className="text-base hover:scale-125 transition-transform p-1 rounded hover:bg-zinc-800"
                           >
                             {em}
                           </button>
@@ -569,7 +559,7 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                     )}
                   </div>
 
-                  {/* Reaction Chips */}
+                  {/* Reaction Badges */}
                   {Object.keys(msg.reactions).length > 0 && (
                     <div className={`flex flex-wrap gap-1 mt-1.5 ${isMe ? "justify-end" : "justify-start"}`}>
                       {Object.entries(msg.reactions).map(([emoji, uids]) => {
@@ -578,10 +568,10 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                           <button
                             key={emoji}
                             onClick={() => handleToggleReaction(msg.id, emoji)}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all ${
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs transition-colors ${
                               userReacted
-                                ? "bg-[#F7ECE6] border border-[#CC5A37] text-[#CC5A37] font-semibold"
-                                : "bg-white border border-[#E5E3DC] text-[#6F6D66] hover:border-[#CC5A37]"
+                                ? "bg-zinc-800 border border-zinc-600 text-zinc-100 font-semibold"
+                                : "bg-zinc-900 border border-zinc-800 text-zinc-400 hover:border-zinc-700"
                             }`}
                           >
                             <span>{emoji}</span>
@@ -599,13 +589,13 @@ export default function RoomChatPage({ params }: RoomPageProps) {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Typing Notification Banner */}
+        {/* Typing Notification */}
         {typingUsers.length > 0 && (
-          <div className="px-6 py-1.5 text-xs text-[#CC5A37] italic flex items-center gap-2 bg-[#FAF9F5]">
+          <div className="px-6 py-1 text-xs text-zinc-400 italic flex items-center gap-2 bg-zinc-950">
             <span className="flex gap-1 items-center">
-              <span className="w-1.5 h-1.5 bg-[#CC5A37] rounded-full animate-bounce"></span>
-              <span className="w-1.5 h-1.5 bg-[#CC5A37] rounded-full animate-bounce [animation-delay:0.2s]"></span>
-              <span className="w-1.5 h-1.5 bg-[#CC5A37] rounded-full animate-bounce [animation-delay:0.4s]"></span>
+              <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce"></span>
+              <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+              <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
             </span>
             <span>{typingUsers.join(", ")} {typingUsers.length === 1 ? "is" : "are"} typing...</span>
           </div>
@@ -613,27 +603,27 @@ export default function RoomChatPage({ params }: RoomPageProps) {
 
         {/* Active Reply Banner */}
         {replyTarget && (
-          <div className="mx-4 sm:mx-6 mb-2 p-2.5 rounded-xl bg-white border border-[#CC5A37]/30 flex items-center justify-between shadow-sm">
+          <div className="mx-4 sm:mx-6 mb-2 p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-2 text-xs truncate">
-              <CornerDownRight className="w-4 h-4 text-[#CC5A37] shrink-0" />
+              <CornerDownRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
               <div className="truncate">
-                <span className="font-semibold text-[#1F1E1D]">Replying to {replyTarget.senderName}: </span>
-                <span className="text-[#6F6D66] italic">{replyTarget.content}</span>
+                <span className="font-medium text-zinc-200">Replying to {replyTarget.senderName}: </span>
+                <span className="text-zinc-400">{replyTarget.content}</span>
               </div>
             </div>
             <button
               onClick={() => setReplyTarget(null)}
-              className="text-[#6F6D66] hover:text-[#1F1E1D] p-1 rounded-md"
+              className="text-zinc-400 hover:text-zinc-100 p-1"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
 
-        {/* Input Box Dock */}
-        <div className="p-4 sm:p-6 bg-white border-t border-[#E5E3DC] shrink-0">
-          <form onSubmit={handleSendMessage} className="flex items-end gap-2.5">
-            <div className="flex-1 bg-[#FAF9F5] border border-[#E5E3DC] focus-within:border-[#CC5A37] focus-within:ring-1 focus-within:ring-[#CC5A37] rounded-2xl p-2 transition-all flex flex-col">
+        {/* Input Box Dock (shadcn input dock) */}
+        <div className="p-4 sm:p-5 bg-zinc-950 border-t border-zinc-800/90 shrink-0">
+          <form onSubmit={handleSendMessage} className="flex items-end gap-2">
+            <div className="flex-1 bg-zinc-900/90 border border-zinc-800 focus-within:border-zinc-600 rounded-2xl p-2.5 transition-colors flex flex-col">
               <textarea
                 value={inputText}
                 onChange={handleInputChange}
@@ -644,8 +634,8 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                   }
                 }}
                 rows={1}
-                placeholder={`Speak in #${roomName}... (Enter to send, Shift+Enter for newline)`}
-                className="w-full bg-transparent border-0 resize-none text-sm text-[#1F1E1D] placeholder:text-[#9B988F] focus:outline-none max-h-32 px-1"
+                placeholder={`Message #${roomName}... (Enter to send)`}
+                className="w-full bg-transparent border-0 resize-none text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none max-h-32 px-1"
               />
               <div className="flex items-center justify-between pt-1 border-t border-transparent">
                 <div className="flex items-center gap-1">
@@ -654,14 +644,14 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                       key={em}
                       type="button"
                       onClick={() => setInputText((prev) => prev + em)}
-                      className="text-xs hover:scale-125 transition-transform px-1 py-0.5 rounded text-[#6F6D66] hover:text-[#1F1E1D]"
+                      className="text-xs hover:scale-125 transition-transform px-1 py-0.5 rounded text-zinc-400 hover:text-zinc-200"
                     >
                       {em}
                     </button>
                   ))}
                 </div>
-                <span className="text-[10px] text-[#9B988F] font-mono pr-1">
-                  markdown supported
+                <span className="text-[10px] text-zinc-500 font-mono pr-1">
+                  markdown ready
                 </span>
               </div>
             </div>
@@ -669,7 +659,7 @@ export default function RoomChatPage({ params }: RoomPageProps) {
             <button
               type="submit"
               disabled={!inputText.trim()}
-              className="h-12 w-12 rounded-2xl bg-[#CC5A37] hover:bg-[#B84E2E] text-white flex items-center justify-center shrink-0 shadow-warm transition-all disabled:opacity-40"
+              className="h-11 w-11 rounded-xl bg-zinc-100 hover:bg-white text-zinc-950 flex items-center justify-center shrink-0 shadow-sm transition-all active:scale-[0.98] disabled:opacity-40"
             >
               <Send className="w-4 h-4" />
             </button>

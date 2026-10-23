@@ -2,7 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { MessageSquare, Sparkles, ArrowRight, Compass, ShieldCheck, Zap, Volume2, Users } from "lucide-react";
+import {
+  MessageSquare,
+  Sparkles,
+  ArrowRight,
+  Compass,
+  ShieldCheck,
+  Zap,
+  Volume2,
+  RefreshCw,
+  Hash,
+  Activity,
+  Layers,
+} from "lucide-react";
 import { generateRoomSlug, AVATAR_OPTIONS } from "@/lib/utils";
 
 interface PublicRoom {
@@ -16,7 +28,7 @@ export default function HomePage() {
   const router = useRouter();
 
   const [name, setName] = useState("");
-  const [avatar, setAvatar] = useState("☕");
+  const [avatar, setAvatar] = useState("⚡");
   const [roomSlug, setRoomSlug] = useState("");
   const [roomTitle, setRoomTitle] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -25,16 +37,13 @@ export default function HomePage() {
   const [publicRooms, setPublicRooms] = useState<PublicRoom[]>([]);
 
   useEffect(() => {
-    // Generate initial friendly room slug
     setRoomSlug(generateRoomSlug());
 
-    // Load saved user profile
     const savedName = localStorage.getItem("havenchat_user_name");
     const savedAvatar = localStorage.getItem("havenchat_user_avatar");
     if (savedName) setName(savedName);
     if (savedAvatar) setAvatar(savedAvatar);
 
-    // Fetch active rooms
     fetch("/api/rooms")
       .then((res) => res.json())
       .then((data) => {
@@ -45,10 +54,9 @@ export default function HomePage() {
 
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
-    const finalName = name.trim() || "Gentle Traveler";
+    const finalName = name.trim() || "Anonymous Explorer";
     const finalSlug = (roomSlug.trim() || generateRoomSlug()).toLowerCase();
 
-    // Persist profile
     localStorage.setItem("havenchat_user_name", finalName);
     localStorage.setItem("havenchat_user_avatar", avatar);
 
@@ -77,7 +85,7 @@ export default function HomePage() {
     e.preventDefault();
     if (!joinCode.trim()) return;
 
-    const finalName = name.trim() || "Gentle Traveler";
+    const finalName = name.trim() || "Anonymous Explorer";
     localStorage.setItem("havenchat_user_name", finalName);
     localStorage.setItem("havenchat_user_avatar", avatar);
 
@@ -86,78 +94,86 @@ export default function HomePage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#FAF9F5] flex flex-col justify-between selection:bg-[#CC5A37]/20">
-      {/* Top Navigation */}
-      <header className="border-b border-[#E5E3DC] bg-[#FAF9F5]/80 backdrop-blur-md sticky top-0 z-20">
+    <main className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col justify-between selection:bg-zinc-800 relative overflow-hidden">
+      {/* Background Decorative Gradients */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-gradient-to-b from-indigo-500/10 via-zinc-900/5 to-transparent blur-3xl pointer-events-none -z-10" />
+
+      {/* Top Navbar */}
+      <header className="border-b border-zinc-800/80 bg-zinc-950/70 backdrop-blur-xl sticky top-0 z-30">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-xl bg-[#CC5A37] flex items-center justify-center text-white shadow-warm">
-              <MessageSquare className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-950 shadow-sm font-bold">
+              <MessageSquare className="w-4 h-4 fill-current" />
             </div>
-            <div>
-              <span className="font-serif font-bold text-xl tracking-tight text-[#1F1E1D]">HavenChat</span>
-              <span className="ml-2 text-xs font-mono uppercase tracking-widest text-[#6F6D66] bg-[#EFECE6] px-2 py-0.5 rounded-full">v1.0</span>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-base tracking-tight text-zinc-100">HavenChat</span>
+              <span className="text-[10px] font-mono font-medium uppercase px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700/60">
+                shadcn/ui
+              </span>
             </div>
           </div>
-          <div className="flex items-center space-x-3 text-xs text-[#6F6D66]">
-            <span className="flex items-center gap-1.5 bg-[#FAF9F5] border border-[#E5E3DC] px-2.5 py-1 rounded-full">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Vercel Serverless Ready
-            </span>
+
+          <div className="flex items-center space-x-3 text-xs">
+            <div className="flex items-center gap-2 bg-zinc-900/80 border border-zinc-800 px-3 py-1.5 rounded-full text-zinc-300">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="font-mono text-[11px] text-zinc-400">Vercel Edge Ready</span>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <div className="max-w-4xl mx-auto px-6 pt-12 pb-16 flex-1 w-full">
+      <div className="max-w-4xl mx-auto px-6 pt-12 pb-16 flex-1 w-full flex flex-col items-center">
         <div className="text-center max-w-2xl mx-auto mb-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#E5E3DC] bg-white text-xs font-medium text-[#CC5A37] mb-4 shadow-sm">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Frictionless Real-time Web Rooms</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800 bg-zinc-900/80 text-xs font-medium text-zinc-300 mb-5 shadow-sm">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Next-Gen Real-Time Room Engine</span>
           </div>
-          <h1 className="font-serif text-4xl sm:text-5xl font-normal text-[#1F1E1D] tracking-tight leading-[1.2]">
-            Conversation in its purest, most thoughtful state.
+
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-zinc-100 tracking-tight leading-[1.15]">
+            Instant rooms. <span className="bg-gradient-to-r from-zinc-100 via-zinc-400 to-zinc-500 bg-clip-text text-transparent">Zero friction.</span>
           </h1>
-          <p className="mt-3 text-[#6F6D66] text-base leading-relaxed">
-            Create an intimate space, share a private link, and converse freely with real-time presence, rich reactions, and zero registration friction.
+          <p className="mt-3.5 text-zinc-400 text-sm sm:text-base leading-relaxed max-w-xl mx-auto">
+            Spin up an isolated chat room in seconds. Share the link, converse in real-time with presence indicators, message replies, and emoji reactions.
           </p>
         </div>
 
-        {/* Interactive Room Console */}
-        <div className="max-w-xl mx-auto bg-white border border-[#E5E3DC] rounded-2xl shadow-warm p-6 sm:p-8">
-          {/* Identity Customizer */}
-          <div className="mb-6 pb-6 border-b border-[#EFECE6]">
-            <label className="block text-xs font-mono uppercase tracking-wider text-[#6F6D66] mb-2">
-              Your Persona in the Room
+        {/* Interactive Console Card (shadcn Card standard) */}
+        <div className="w-full max-w-lg bg-zinc-900/70 border border-zinc-800/90 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
+          {/* Persona Picker */}
+          <div className="mb-6 pb-6 border-b border-zinc-800/80">
+            <label className="block text-xs font-medium uppercase tracking-wider text-zinc-400 mb-2.5">
+              Display Profile
             </label>
             <div className="flex items-center gap-3">
-              <div className="relative group">
-                <div className="w-12 h-12 rounded-xl bg-[#FAF9F5] border border-[#E5E3DC] flex items-center justify-center text-2xl cursor-pointer hover:border-[#CC5A37] transition-all">
-                  {avatar}
-                </div>
+              <div className="w-11 h-11 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-xl shrink-0 shadow-inner">
+                {avatar}
               </div>
               <input
                 type="text"
-                placeholder="Enter your display name (e.g. Alice)"
+                placeholder="Your nickname (e.g. Maverick)"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 maxLength={30}
-                className="flex-1 bg-[#FAF9F5] border border-[#E5E3DC] rounded-xl px-4 py-2.5 text-sm text-[#1F1E1D] placeholder:text-[#9B988F] focus:outline-none focus:border-[#CC5A37] focus:ring-1 focus:ring-[#CC5A37] transition-all"
+                className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-colors"
               />
             </div>
 
-            {/* Avatar Selector Tray */}
+            {/* Quick Avatar Tray */}
             <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1">
-              <span className="text-xs text-[#6F6D66] mr-1">Avatar:</span>
-              {AVATAR_OPTIONS.map((em) => (
+              <span className="text-[11px] text-zinc-500 mr-1">Avatar:</span>
+              {["⚡", "🚀", "🪐", "🔥", "💎", "🦊", "☕", "👾", "🎨", "🛡️"].map((em) => (
                 <button
                   key={em}
                   type="button"
                   onClick={() => setAvatar(em)}
                   className={`w-7 h-7 rounded-lg text-sm flex items-center justify-center transition-all ${
                     avatar === em
-                      ? "bg-[#CC5A37]/10 border border-[#CC5A37] scale-110"
-                      : "hover:bg-[#FAF9F5]"
+                      ? "bg-zinc-800 border border-zinc-600 scale-105"
+                      : "hover:bg-zinc-800/60 text-zinc-400"
                   }`}
                 >
                   {em}
@@ -166,70 +182,71 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Mode Switcher Tabs */}
-          <div className="flex border-b border-[#EFECE6] mb-6">
+          {/* Segmented Control / Tabs (shadcn tabs style) */}
+          <div className="grid grid-cols-2 bg-zinc-950 p-1 rounded-xl border border-zinc-800/80 mb-6">
             <button
               onClick={() => setActiveTab("create")}
-              className={`pb-3 px-4 text-sm font-medium border-b-2 transition-all ${
+              className={`py-2 text-xs font-medium rounded-lg transition-all ${
                 activeTab === "create"
-                  ? "border-[#CC5A37] text-[#CC5A37]"
-                  : "border-transparent text-[#6F6D66] hover:text-[#1F1E1D]"
+                  ? "bg-zinc-800 text-zinc-100 shadow-sm"
+                  : "text-zinc-400 hover:text-zinc-200"
               }`}
             >
-              Create New Room
+              Create Room
             </button>
             <button
               onClick={() => setActiveTab("join")}
-              className={`pb-3 px-4 text-sm font-medium border-b-2 transition-all ${
+              className={`py-2 text-xs font-medium rounded-lg transition-all ${
                 activeTab === "join"
-                  ? "border-[#CC5A37] text-[#CC5A37]"
-                  : "border-transparent text-[#6F6D66] hover:text-[#1F1E1D]"
+                  ? "bg-zinc-800 text-zinc-100 shadow-sm"
+                  : "text-zinc-400 hover:text-zinc-200"
               }`}
             >
-              Join Existing Room
+              Join with Code
             </button>
           </div>
 
-          {/* Form Content */}
+          {/* Tab Content */}
           {activeTab === "create" ? (
             <form onSubmit={handleCreateRoom} className="space-y-4">
               <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-[#6F6D66] mb-1.5">
-                  Room Topic or Title (Optional)
+                <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+                  Room Topic or Name <span className="text-zinc-500">(Optional)</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Design Sync, Late Night Coding, Book Club"
+                  placeholder="e.g. Engineering Sync, Late Night Coding"
                   value={roomTitle}
                   onChange={(e) => setRoomTitle(e.target.value)}
                   maxLength={50}
-                  className="w-full bg-[#FAF9F5] border border-[#E5E3DC] rounded-xl px-4 py-2.5 text-sm text-[#1F1E1D] placeholder:text-[#9B988F] focus:outline-none focus:border-[#CC5A37] focus:ring-1 focus:ring-[#CC5A37] transition-all"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-colors"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-mono uppercase tracking-wider text-[#6F6D66]">
-                    Room Code / Slug
+                  <label className="text-xs font-medium text-zinc-300">
+                    Room Slug / ID
                   </label>
                   <button
                     type="button"
                     onClick={() => setRoomSlug(generateRoomSlug())}
-                    className="text-xs text-[#CC5A37] hover:underline"
+                    className="inline-flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-200 transition-colors"
                   >
-                    Generate Another
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Regenerate</span>
                   </button>
                 </div>
                 <div className="flex items-center">
-                  <span className="bg-[#EFECE6] border border-r-0 border-[#E5E3DC] text-[#6F6D66] text-xs px-3 py-2.5 rounded-l-xl font-mono">
-                    haven/
+                  <span className="bg-zinc-950 border border-r-0 border-zinc-800 text-zinc-400 text-xs px-3 py-2.5 rounded-l-xl font-mono flex items-center gap-1">
+                    <Hash className="w-3 h-3 text-zinc-500" />
                   </span>
                   <input
                     type="text"
                     value={roomSlug}
                     onChange={(e) => setRoomSlug(e.target.value)}
                     required
-                    className="w-full bg-[#FAF9F5] border border-[#E5E3DC] rounded-r-xl px-4 py-2.5 text-sm font-mono text-[#1F1E1D] focus:outline-none focus:border-[#CC5A37] focus:ring-1 focus:ring-[#CC5A37] transition-all"
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-r-xl px-3 py-2.5 text-sm font-mono text-zinc-100 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-colors"
                   />
                 </div>
               </div>
@@ -237,31 +254,33 @@ export default function HomePage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 bg-[#CC5A37] hover:bg-[#B84E2E] text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 shadow-warm transition-all disabled:opacity-60"
+                className="w-full mt-2 bg-zinc-100 hover:bg-white text-zinc-950 font-semibold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.99] disabled:opacity-50"
               >
-                <span>{loading ? "Creating Sanctuary..." : "Enter Room"}</span>
+                <span>{loading ? "Generating Space..." : "Launch Room"}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>
           ) : (
             <form onSubmit={handleJoinRoom} className="space-y-4">
               <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-[#6F6D66] mb-1.5">
-                  Enter Room Code or Invite Link
+                <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+                  Enter Room Code
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. warm-hearth-402 or full link"
-                  value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value)}
-                  required
-                  className="w-full bg-[#FAF9F5] border border-[#E5E3DC] rounded-xl px-4 py-2.5 text-sm font-mono text-[#1F1E1D] placeholder:text-[#9B988F] focus:outline-none focus:border-[#CC5A37] focus:ring-1 focus:ring-[#CC5A37] transition-all"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="e.g. cozy-sanctuary-402 or room pin"
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value)}
+                    required
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm font-mono text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-colors"
+                  />
+                </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full mt-2 bg-[#1F1E1D] hover:bg-[#2A2826] text-white font-medium py-3 rounded-xl flex items-center justify-center gap-2 shadow-warm transition-all"
+                className="w-full mt-2 bg-zinc-100 hover:bg-white text-zinc-950 font-semibold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.99]"
               >
                 <span>Join Room</span>
                 <ArrowRight className="w-4 h-4" />
@@ -269,23 +288,23 @@ export default function HomePage() {
             </form>
           )}
 
-          {/* Active Rooms Pill List */}
+          {/* Active Public Rooms */}
           {publicRooms.length > 0 && (
-            <div className="mt-8 pt-6 border-t border-[#EFECE6]">
-              <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-[#6F6D66] mb-3">
-                <Compass className="w-3.5 h-3.5 text-[#CC5A37]" />
-                <span>Active Havens Right Now</span>
+            <div className="mt-6 pt-5 border-t border-zinc-800/80">
+              <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-wider text-zinc-400 mb-2.5">
+                <Activity className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Live Rooms Active</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {publicRooms.slice(0, 5).map((r) => (
                   <button
                     key={r.id}
                     onClick={() => router.push(`/room/${r.id}`)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FAF9F5] hover:bg-[#F7ECE6] border border-[#E5E3DC] text-xs text-[#1F1E1D] transition-all"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-300 transition-all hover:bg-zinc-800/40"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    <span className="font-medium">{r.name}</span>
-                    <span className="text-[#6F6D66] text-[10px]">({r.participantsCount} online)</span>
+                    <span className="font-medium text-zinc-200">{r.name}</span>
+                    <span className="text-zinc-500 text-[10px]">({r.participantsCount})</span>
                   </button>
                 ))}
               </div>
@@ -293,46 +312,46 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* Feature Highlights Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto mt-12 text-left">
-          <div className="p-4 rounded-xl border border-[#E5E3DC] bg-white shadow-sm">
-            <div className="w-8 h-8 rounded-lg bg-[#F7ECE6] text-[#CC5A37] flex items-center justify-center mb-2.5">
+        {/* Feature Cards Grid (shadcn Bento style) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 max-w-3xl mx-auto mt-12 w-full text-left">
+          <div className="p-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40 hover:border-zinc-700 transition-all">
+            <div className="w-8 h-8 rounded-lg bg-zinc-800 text-indigo-400 flex items-center justify-center mb-2.5">
               <Zap className="w-4 h-4" />
             </div>
-            <h3 className="font-serif font-bold text-sm text-[#1F1E1D]">Zero-Lag Delta Sync</h3>
-            <p className="text-xs text-[#6F6D66] mt-1 leading-relaxed">
-              Adaptive delta streaming delivers sub-second messaging with automatic reconnection fallback.
+            <h3 className="font-semibold text-sm text-zinc-100">Zero-Lag Delta Sync</h3>
+            <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+              Adaptive long-polling and event streams with automatic visibility backoff.
             </p>
           </div>
 
-          <div className="p-4 rounded-xl border border-[#E5E3DC] bg-white shadow-sm">
-            <div className="w-8 h-8 rounded-lg bg-[#F7ECE6] text-[#CC5A37] flex items-center justify-center mb-2.5">
+          <div className="p-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40 hover:border-zinc-700 transition-all">
+            <div className="w-8 h-8 rounded-lg bg-zinc-800 text-emerald-400 flex items-center justify-center mb-2.5">
               <Volume2 className="w-4 h-4" />
             </div>
-            <h3 className="font-serif font-bold text-sm text-[#1F1E1D]">Tactile Audio Feedback</h3>
-            <p className="text-xs text-[#6F6D66] mt-1 leading-relaxed">
-              Synthesized Web Audio clicks and chimes designed to feel organic, warm, and toggleable.
+            <h3 className="font-semibold text-sm text-zinc-100">Web Audio FX</h3>
+            <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+              Zero-asset synthesized sound chimes on send, receive, and reaction events.
             </p>
           </div>
 
-          <div className="p-4 rounded-xl border border-[#E5E3DC] bg-white shadow-sm">
-            <div className="w-8 h-8 rounded-lg bg-[#F7ECE6] text-[#CC5A37] flex items-center justify-center mb-2.5">
+          <div className="p-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40 hover:border-zinc-700 transition-all">
+            <div className="w-8 h-8 rounded-lg bg-zinc-800 text-amber-400 flex items-center justify-center mb-2.5">
               <ShieldCheck className="w-4 h-4" />
             </div>
-            <h3 className="font-serif font-bold text-sm text-[#1F1E1D]">Ephemeral & Private</h3>
-            <p className="text-xs text-[#6F6D66] mt-1 leading-relaxed">
-              No tracking, no passwords to forget. Share a private code or keep it between close friends.
+            <h3 className="font-semibold text-sm text-zinc-100">Ephemeral Privacy</h3>
+            <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+              No tracking, no cookies, no databases storing your personal identity.
             </p>
           </div>
         </div>
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-[#E5E3DC] py-6 text-center text-xs text-[#6F6D66] bg-[#FAF9F5]">
-        <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p>© 2026 HavenChat — Built with Claude Warm Minimalist Aesthetic.</p>
-          <p className="font-mono text-[11px] text-[#9B988F]">
-            Orchestrated by Antigravity × Hermes × OpenCode × OpenClaw × OMP
+      <footer className="border-t border-zinc-800/80 py-5 text-center text-xs text-zinc-500 bg-zinc-950">
+        <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+          <p>© 2026 HavenChat • Built with shadcn/ui & Next.js 15 App Router</p>
+          <p className="font-mono text-[11px] text-zinc-500">
+            Engineered by Antigravity × Hermes × OpenCode × OpenClaw × OMP
           </p>
         </div>
       </footer>

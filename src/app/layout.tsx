@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "HavenChat — Intimate & Frictionless Real-time Rooms",
-  description: "A warm, distraction-free web room chat powered by Next.js and Vercel serverless architecture.",
+  title: "HavenChat — Modern Real-Time Chat Rooms",
+  description: "High-performance, frictionless real-time room chat powered by Next.js and Vercel serverless architecture.",
 };
 
 export default function RootLayout({
@@ -12,8 +12,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-warm-sand text-warm-text-ink antialiased selection:bg-warm-terracotta/20 selection:text-warm-terracotta">
+    <html lang="en" className="dark">
+      <body className="min-h-screen bg-background text-foreground antialiased selection:bg-zinc-800 selection:text-zinc-100">
         {children}
       </body>
     </html>
