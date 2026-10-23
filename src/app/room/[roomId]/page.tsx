@@ -1142,5 +1142,6 @@ export default function RoomChatPage({ params }: RoomPageProps) {
           </div>
         </div>
       )}
+    </div>
   );
 }
