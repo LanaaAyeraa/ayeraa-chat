@@ -376,7 +376,7 @@ public class MainActivity extends Activity {
         infoCard.addView(tvCardTitle);
 
         TextView tvCardServer = new TextView(this);
-        tvCardServer.setText("Server: haven-chat-eight.vercel.app\nStatus: Aktif & Terhubung\nProtokol: Native Android HTTP/REST");
+        tvCardServer.setText("Server: ayeraa-chat.vercel.app\nStatus: Aktif & Terhubung\nProtokol: Native Android HTTP/REST");
         tvCardServer.setTextColor(Color.parseColor("#a1a1aa"));
         tvCardServer.setTextSize(12);
         tvCardServer.setPadding(0, 12, 0, 0);

@@ -18,7 +18,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ApiClient {
-    public static final String BASE_URL = "https://haven-chat-eight.vercel.app";
+    public static final String BASE_URL = "https://ayeraa-chat.vercel.app";
     private static final ExecutorService executor = Executors.newFixedThreadPool(4);
     private static final Handler mainHandler = new Handler(Looper.getMainLooper());
 
@@ -28,51 +28,81 @@ public class ApiClient {
     }
 
     private static String request(String endpoint, String method, JSONObject jsonBody, String token) throws Exception {
-        URL url = new URL(BASE_URL + endpoint);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod(method);
-        conn.setConnectTimeout(15000);
-        conn.setReadTimeout(20000);
-        conn.setRequestProperty("Accept", "application/json");
+        String currentUrl = endpoint.startsWith("http") ? endpoint : (BASE_URL + endpoint);
+        int redirectCount = 0;
 
-        if (token != null && !token.isEmpty()) {
-            conn.setRequestProperty("Authorization", "Bearer " + token);
-        }
+        while (redirectCount < 5) {
+            URL url = new URL(currentUrl);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod(method);
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(20000);
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setInstanceFollowRedirects(false);
 
-        if (jsonBody != null) {
-            conn.setDoOutput(true);
-            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-            byte[] bytes = jsonBody.toString().getBytes(StandardCharsets.UTF_8);
-            try (OutputStream os = conn.getOutputStream()) {
-                os.write(bytes);
+            if (token != null && !token.isEmpty()) {
+                conn.setRequestProperty("Authorization", "Bearer " + token);
             }
-        }
 
-        int code = conn.getResponseCode();
-        InputStream is = (code >= 200 && code < 300) ? conn.getInputStream() : conn.getErrorStream();
-        if (is == null) {
-            throw new Exception("HTTP error code " + code);
-        }
-
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line);
-        }
-        reader.close();
-
-        if (code >= 400) {
-            try {
-                JSONObject errObj = new JSONObject(sb.toString());
-                if (errObj.has("error")) {
-                    throw new Exception(errObj.getString("error"));
+            if (jsonBody != null) {
+                conn.setDoOutput(true);
+                conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                byte[] bytes = jsonBody.toString().getBytes(StandardCharsets.UTF_8);
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(bytes);
                 }
-            } catch (Exception ignored) {}
-            throw new Exception("Error " + code + ": " + sb.toString());
+            }
+
+            int code = conn.getResponseCode();
+
+            // Handle 301, 302, 303, 307, 308 redirects automatically
+            if (code == 301 || code == 302 || code == 303 || code == 307 || code == 308) {
+                String location = conn.getHeaderField("Location");
+                if (location != null && !location.isEmpty()) {
+                    if (location.startsWith("/")) {
+                        URL prev = new URL(currentUrl);
+                        currentUrl = prev.getProtocol() + "://" + prev.getHost() + location;
+                    } else {
+                        currentUrl = location;
+                    }
+                    if (code == 303) {
+                        method = "GET";
+                        jsonBody = null;
+                    }
+                    redirectCount++;
+                    conn.disconnect();
+                    continue;
+                }
+            }
+
+            InputStream is = (code >= 200 && code < 300) ? conn.getInputStream() : conn.getErrorStream();
+            if (is == null) {
+                throw new Exception("HTTP error code " + code);
+            }
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+            reader.close();
+            conn.disconnect();
+
+            if (code >= 400) {
+                try {
+                    JSONObject errObj = new JSONObject(sb.toString());
+                    if (errObj.has("error")) {
+                        throw new Exception(errObj.getString("error"));
+                    }
+                } catch (Exception ignored) {}
+                throw new Exception("Error " + code + ": " + sb.toString());
+            }
+
+            return sb.toString();
         }
 
-        return sb.toString();
+        throw new Exception("Terlalu banyak redirect");
     }
 
     // 1. Login
