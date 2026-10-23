@@ -13,13 +13,16 @@ import {
   Hash,
   Activity,
   Lock,
+  Search,
+  UserCheck,
 } from "lucide-react";
-import { generateRoomSlug } from "@/lib/utils";
+import { generateRoomSlug, getDmRoomId } from "@/lib/utils";
 import { SpotlightCard } from "@/components/amicro/SpotlightCard";
 import { TextShimmer } from "@/components/amicro/TextShimmer";
 import { useAuth } from "@/context/AuthContext";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { UserBar } from "@/components/auth/UserBar";
+import { Avatar } from "@/components/ui/Avatar";
 
 interface PublicRoom {
   id: string;
@@ -36,8 +39,13 @@ export default function HomePage() {
   const [roomTitle, setRoomTitle] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"create" | "join">("create");
+  const [activeTab, setActiveTab] = useState<"create" | "join" | "search">("create");
   const [publicRooms, setPublicRooms] = useState<PublicRoom[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<
+    Array<{ id: string; name: string; username: string; avatar: string }>
+  >([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   useEffect(() => {
     setRoomSlug(generateRoomSlug());
@@ -49,6 +57,24 @@ export default function HomePage() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== "search") return;
+    setSearchLoading(true);
+    const timer = setTimeout(() => {
+      fetch(`/api/users/search?q=${encodeURIComponent(searchQuery)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && Array.isArray(data.users)) {
+            setSearchResults(data.users);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setSearchLoading(false));
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, activeTab]);
 
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,7 +195,7 @@ export default function HomePage() {
               className="w-full max-w-lg bg-zinc-900/70 border border-zinc-800/90 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md"
             >
               {/* Segmented Control / Tabs */}
-              <div className="grid grid-cols-2 bg-zinc-950 p-1 rounded-xl border border-zinc-800/80 mb-6">
+              <div className="grid grid-cols-3 bg-zinc-950 p-1 rounded-xl border border-zinc-800/80 mb-6">
                 <button
                   onClick={() => setActiveTab("create")}
                   className={`py-2 text-xs font-medium rounded-lg transition-all duration-150 active:scale-95 ${
@@ -178,7 +204,7 @@ export default function HomePage() {
                       : "text-zinc-400 hover:text-zinc-200"
                   }`}
                 >
-                  Buat Room Baru
+                  Buat Room
                 </button>
                 <button
                   onClick={() => setActiveTab("join")}
@@ -188,7 +214,18 @@ export default function HomePage() {
                       : "text-zinc-400 hover:text-zinc-200"
                   }`}
                 >
-                  Gabung via Kode
+                  Gabung Kode
+                </button>
+                <button
+                  onClick={() => setActiveTab("search")}
+                  className={`py-2 text-xs font-medium rounded-lg transition-all duration-150 active:scale-95 flex items-center justify-center gap-1.5 ${
+                    activeTab === "search"
+                      ? "bg-zinc-800 text-zinc-100 shadow-sm"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  <Search className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Cari & DM</span>
                 </button>
               </div>
 
@@ -246,7 +283,7 @@ export default function HomePage() {
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                   </button>
                 </form>
-              ) : (
+              ) : activeTab === "join" ? (
                 <form onSubmit={handleJoinRoom} className="space-y-4">
                   <div>
                     <label className="block text-xs font-medium text-zinc-300 mb-1.5">
@@ -272,6 +309,70 @@ export default function HomePage() {
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </form>
+              ) : (
+                /* Search & Direct Message Tab */
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+                      Cari Pengguna Terdaftar
+                    </label>
+                    <div className="relative">
+                      <Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="Ketik nama atau @username..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        autoFocus
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Results List */}
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                    {searchLoading ? (
+                      <div className="py-8 flex flex-col items-center justify-center gap-2 text-zinc-500 text-xs font-mono">
+                        <div className="w-5 h-5 border-2 border-zinc-700 border-t-zinc-300 rounded-full animate-spin" />
+                        <span>Mencari pengguna...</span>
+                      </div>
+                    ) : searchResults.length > 0 ? (
+                      searchResults.map((u) => (
+                        <div
+                          key={u.id}
+                          className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80 hover:border-zinc-700 transition-all duration-150"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Avatar src={u.avatar} size="md" />
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-zinc-100 truncate">{u.name}</p>
+                              <p className="text-[11px] text-zinc-400 font-mono truncate">@{u.username}</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (!user) return;
+                              const dmRoom = getDmRoomId(user.id, u.id);
+                              router.push(`/room/${dmRoom}`);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-semibold shadow-sm transition-all duration-150 active:scale-95 shrink-0"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span>Kirim DM</span>
+                          </button>
+                        </div>
+                      ))
+                    ) : searchQuery.trim().length > 0 ? (
+                      <div className="py-8 text-center text-xs text-zinc-500">
+                        Tidak ada pengguna yang cocok dengan &quot;{searchQuery}&quot;
+                      </div>
+                    ) : (
+                      <div className="py-8 text-center text-xs text-zinc-500">
+                        Belum ada pengguna lain yang ditemukan. Bagikan link room ke teman untuk mendaftar!
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
 
               {/* Active Public Rooms */}

@@ -1,4 +1,5 @@
 import { Room, Participant, Message, Attachment } from "@/types/chat";
+import fs from "fs";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -8,13 +9,140 @@ declare global {
 const rooms: Map<string, Room> = globalThis.__ayeraaChatRooms ?? new Map<string, Room>();
 globalThis.__ayeraaChatRooms = rooms;
 
+const BLOB_READ_WRITE_TOKEN =
+  process.env.BLOB_READ_WRITE_TOKEN ||
+  "vercel_blob_rw_ITF3zssU2LGjc6OV_hxJF6c5r5LcxswYaItHqMtoG818Fdg";
+const BLOB_BASE_URL = "https://itf3zssu2lgjc6ov.public.blob.vercel-storage.com";
+
 const PARTICIPANT_ACTIVE_TIMEOUT_MS = 15000; // 15s for accurate presence dot
 const PARTICIPANT_EVICTION_TIMEOUT_MS = 3600000; // 1 hour retainment
 const MAX_MESSAGES_PER_ROOM = 500;
 const MAX_ROOMS = 100;
 
+function getSafeRoomFileName(roomId: string): string {
+  return roomId.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+}
+
+function getTmpRoomPath(roomId: string): string {
+  const safe = getSafeRoomFileName(roomId);
+  return `/tmp/ayeraa_room_${safe}.json`;
+}
+
+// Merge messages without duplicates, keeping latest reactions/edits
+function mergeRoomMessages(room: Room, incomingMessages: Message[]): void {
+  const map = new Map<string, Message>();
+  for (const m of room.messages) {
+    map.set(m.id, m);
+  }
+  for (const inc of incomingMessages) {
+    const existing = map.get(inc.id);
+    if (!existing) {
+      map.set(inc.id, inc);
+    } else {
+      const incUpdate = Math.max(inc.updatedAt || 0, inc.timestamp || 0);
+      const existUpdate = Math.max(existing.updatedAt || 0, existing.timestamp || 0);
+      if (incUpdate >= existUpdate) {
+        map.set(inc.id, {
+          ...existing,
+          ...inc,
+          reactions: { ...existing.reactions, ...inc.reactions },
+        });
+      }
+    }
+  }
+  room.messages = Array.from(map.values())
+    .sort((a, b) => a.timestamp - b.timestamp)
+    .slice(-MAX_MESSAGES_PER_ROOM);
+}
+
+// Sync room from storage (Local /tmp -> Vercel Blob ground truth)
+export async function syncRoomFromStorage(roomId: string): Promise<Room> {
+  const normalizedId = roomId.trim().toLowerCase();
+  const room = getOrCreateRoom(normalizedId);
+  const tmpPath = getTmpRoomPath(normalizedId);
+
+  // 1. Try local /tmp
+  try {
+    if (fs.existsSync(tmpPath)) {
+      const content = fs.readFileSync(tmpPath, "utf-8");
+      const parsed = JSON.parse(content);
+      if (parsed && Array.isArray(parsed.messages) && parsed.messages.length > 0) {
+        mergeRoomMessages(room, parsed.messages);
+        if (parsed.name && (room.name.startsWith("Room dm--") || room.name.startsWith("Room "))) {
+          room.name = parsed.name;
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  // 2. Try Vercel Blob
+  try {
+    const blobKey = `rooms/${getSafeRoomFileName(normalizedId)}.json`;
+    const res = await fetch(`${BLOB_BASE_URL}/${blobKey}?t=${Date.now()}`, {
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache" },
+    });
+    if (res.ok) {
+      const parsed = await res.json();
+      if (parsed && Array.isArray(parsed.messages) && parsed.messages.length > 0) {
+        mergeRoomMessages(room, parsed.messages);
+        if (parsed.name && (room.name.startsWith("Room dm--") || room.name.startsWith("Room "))) {
+          room.name = parsed.name;
+        }
+        // Write to /tmp cache for faster subsequent reads in this container
+        try {
+          fs.writeFileSync(tmpPath, JSON.stringify(parsed), "utf-8");
+        } catch {}
+      }
+    }
+  } catch {
+    // ignore fetch error
+  }
+
+  return room;
+}
+
+// Persist room to storage (Local /tmp + Vercel Blob)
+export async function persistRoomToStorage(roomId: string): Promise<void> {
+  const normalizedId = roomId.trim().toLowerCase();
+  const room = rooms.get(normalizedId);
+  if (!room) return;
+
+  const dataToSave = {
+    id: room.id,
+    name: room.name,
+    createdAt: room.createdAt,
+    hostId: room.hostId,
+    messages: room.messages,
+  };
+  const jsonStr = JSON.stringify(dataToSave);
+
+  // 1. Write to /tmp
+  try {
+    fs.writeFileSync(getTmpRoomPath(normalizedId), jsonStr, "utf-8");
+  } catch {
+    // ignore
+  }
+
+  // 2. Write to Vercel Blob
+  try {
+    const { put } = await import("@vercel/blob");
+    const blobKey = `rooms/${getSafeRoomFileName(normalizedId)}.json`;
+    await put(blobKey, jsonStr, {
+      access: "public",
+      addRandomSuffix: false,
+      token: BLOB_READ_WRITE_TOKEN,
+    });
+  } catch {
+    // ignore
+  }
+}
+
 export function getOrCreateRoom(roomId: string, roomName?: string, hostId = "system"): Room {
   const normalizedId = roomId.trim().toLowerCase();
+  const isDm = normalizedId.startsWith("dm--") || normalizedId.startsWith("dm_");
   let room = rooms.get(normalizedId);
   if (!room) {
     // Evict oldest room if capacity reached
@@ -23,9 +151,14 @@ export function getOrCreateRoom(roomId: string, roomName?: string, hostId = "sys
       if (oldestKey) rooms.delete(oldestKey);
     }
 
+    const defaultTitle = isDm ? "Direct Message" : `Room ${normalizedId}`;
+    const welcomeMsg = isDm
+      ? "Obrolan pribadi terenkripsi. Riwayat obrolan tersimpan secara aman."
+      : `Welcome to **${roomName?.trim() || normalizedId}**! Share this link with friends to chat instantly.`;
+
     room = {
       id: normalizedId,
-      name: roomName?.trim() || `Room ${normalizedId}`,
+      name: roomName?.trim() || defaultTitle,
       createdAt: Date.now(),
       hostId,
       participants: {},
@@ -35,8 +168,8 @@ export function getOrCreateRoom(roomId: string, roomName?: string, hostId = "sys
           roomId: normalizedId,
           senderId: "system",
           senderName: "Ayeraa Keeper",
-          senderAvatar: "🕯️",
-          content: `Welcome to **${roomName?.trim() || normalizedId}**! Share this link with friends to chat instantly.`,
+          senderAvatar: isDm ? "🔒" : "🕯️",
+          content: welcomeMsg,
           timestamp: Date.now(),
           updatedAt: Date.now(),
           reactions: {},
@@ -45,7 +178,7 @@ export function getOrCreateRoom(roomId: string, roomName?: string, hostId = "sys
       ],
     };
     rooms.set(normalizedId, room);
-  } else if (roomName && roomName !== room.name && room.name === `Room ${normalizedId}`) {
+  } else if (roomName && roomName !== room.name && (room.name === `Room ${normalizedId}` || room.name === "Direct Message")) {
     room.name = roomName;
   }
   return room;
@@ -61,6 +194,7 @@ export function listPublicRooms(): { id: string; name: string; participantsCount
   const result: { id: string; name: string; participantsCount: number; messageCount: number }[] = [];
 
   for (const [id, room] of rooms.entries()) {
+    if (id.startsWith("dm--") || id.startsWith("dm_")) continue;
     const activeCount = Object.values(room.participants).filter(
       (p) => now - p.lastActiveAt < PARTICIPANT_ACTIVE_TIMEOUT_MS
     ).length;
@@ -119,7 +253,7 @@ export function leaveRoom(roomId: string, userId: string): void {
   }
 }
 
-export function addMessage(
+export async function addMessage(
   roomId: string,
   params: {
     senderId: string;
@@ -129,7 +263,7 @@ export function addMessage(
     attachment?: Attachment;
     replyTo?: { id: string; senderName: string; content: string };
   }
-): Message {
+): Promise<Message> {
   const room = getOrCreateRoom(roomId);
   const now = Date.now();
   const message: Message = {
@@ -157,16 +291,18 @@ export function addMessage(
     room.participants[params.senderId].isTyping = false;
   }
 
+  await persistRoomToStorage(room.id);
+
   return message;
 }
 
-export function toggleReaction(
+export async function toggleReaction(
   roomId: string,
   messageId: string,
   userId: string,
   emoji: string,
   clientReactions?: Record<string, string[]>
-): Message | null {
+): Promise<Message | null> {
   const room = getOrCreateRoom(roomId);
 
   let msg = room.messages.find((m) => m.id === messageId);
@@ -203,6 +339,8 @@ export function toggleReaction(
 
   // Touch updatedAt so delta sync recognizes reaction updates!
   msg.updatedAt = Date.now();
+
+  await persistRoomToStorage(room.id);
 
   return msg;
 }

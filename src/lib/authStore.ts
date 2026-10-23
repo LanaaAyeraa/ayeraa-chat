@@ -411,10 +411,40 @@ export async function loginUser(
 }
 
 // Get user by ID
-export function getUserById(userId: string): User | null {
+export async function getUserById(userId: string): Promise<User | null> {
   const users = getUsersMap();
-  const stored = users.get(userId);
+  let stored = users.get(userId);
+  if (!stored) {
+    await syncUsersFromStorage();
+    stored = users.get(userId);
+  }
   return stored ? toPublicUser(stored) : null;
+}
+
+// Search users by username or display name (excluding current user if requested)
+export async function searchUsers(query: string, excludeUserId?: string): Promise<User[]> {
+  await syncUsersFromStorage();
+  const users = getUsersMap();
+  const q = (query || "").trim().toLowerCase();
+  const results: User[] = [];
+
+  for (const stored of users.values()) {
+    if (excludeUserId && stored.id === excludeUserId) continue;
+    if (!q) {
+      results.push(toPublicUser(stored));
+      continue;
+    }
+    const matchUsername = stored.username.toLowerCase().includes(q);
+    const matchName = stored.name.toLowerCase().includes(q);
+    if (matchUsername || matchName) {
+      results.push(toPublicUser(stored));
+    }
+  }
+
+  // Sort: most recently updated / created first
+  return results
+    .sort((a, b) => (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt))
+    .slice(0, 30);
 }
 
 // Update profile

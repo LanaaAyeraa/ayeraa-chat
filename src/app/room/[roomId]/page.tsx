@@ -22,9 +22,18 @@ import {
   Download,
   Maximize2,
   UploadCloud,
+  MessageSquare,
+  Lock,
 } from "lucide-react";
 import { Message, Participant, ReplyContext, Attachment } from "@/types/chat";
-import { formatTimestamp, formatBytes, AVATAR_OPTIONS } from "@/lib/utils";
+import {
+  formatTimestamp,
+  formatBytes,
+  AVATAR_OPTIONS,
+  isDmRoom,
+  getDmPeerId,
+  getDmRoomId,
+} from "@/lib/utils";
 import { sound } from "@/lib/sound";
 import { DynamicIsland } from "@/components/amicro/DynamicIsland";
 import { useAuth } from "@/context/AuthContext";
@@ -583,6 +592,13 @@ export default function RoomChatPage({ params }: RoomPageProps) {
 
   const onlineCount = Math.max(1, participants.filter((p) => p.isOnline !== false).length);
 
+  const isDm = isDmRoom(roomId);
+  const peerId = isDm ? getDmPeerId(roomId, userId) : null;
+  const peer = isDm && peerId ? participants.find((p) => p.id === peerId) : null;
+  const effectiveRoomTitle = isDm
+    ? peer?.name || (roomName.startsWith("Room dm--") ? "Direct Message" : roomName)
+    : roomName;
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center gap-3">
@@ -639,7 +655,7 @@ export default function RoomChatPage({ params }: RoomPageProps) {
     <div className="flex h-screen bg-zinc-950 text-zinc-100 overflow-hidden selection:bg-zinc-800 relative">
       {/* Amicro Top Dynamic Island Component */}
       <DynamicIsland
-        roomName={roomName}
+        roomName={effectiveRoomTitle}
         roomId={roomId}
         memberCount={onlineCount}
         soundEnabled={soundEnabled}
@@ -661,9 +677,18 @@ export default function RoomChatPage({ params }: RoomPageProps) {
               <span>All Rooms</span>
             </Link>
             <h2 className="font-semibold text-base text-zinc-100 tracking-tight truncate flex items-center gap-1.5">
-              <Hash className="w-4 h-4 text-zinc-500 shrink-0" />
-              <span className="truncate">{roomName}</span>
+              {isDm ? (
+                <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+              ) : (
+                <Hash className="w-4 h-4 text-zinc-500 shrink-0" />
+              )}
+              <span className="truncate">{effectiveRoomTitle}</span>
             </h2>
+            {isDm && (
+              <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-mono text-amber-400/90 bg-amber-950/40 border border-amber-900/40 px-2 py-0.5 rounded-md">
+                <span>🔒 Direct Message (1-on-1)</span>
+              </div>
+            )}
             <div className="mt-2.5 flex items-center justify-between gap-2">
               <span className="font-mono text-[11px] bg-zinc-950 border border-zinc-800 px-2 py-0.5 rounded-md text-zinc-400 truncate max-w-[150px]">
                 {roomId}
@@ -697,11 +722,11 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                 return (
                   <div
                     key={p.id}
-                    className={`flex items-center justify-between p-2 rounded-lg transition-all duration-150 ${
+                    className={`group flex items-center justify-between p-2 rounded-lg transition-all duration-150 ${
                       isMe ? "bg-zinc-800/80 text-zinc-100 shadow-sm" : "hover:bg-zinc-800/50 text-zinc-300 hover:text-zinc-100"
                     }`}
                   >
-                    <div className="flex items-center gap-2.5 truncate">
+                    <div className="flex items-center gap-2.5 truncate min-w-0">
                       <div className="relative shrink-0">
                         <Avatar src={p.avatar} size="sm" className="transition-transform hover:scale-110 cursor-default" />
                         <span
@@ -712,11 +737,11 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                           }`}
                         ></span>
                       </div>
-                      <div className="truncate">
+                      <div className="truncate min-w-0">
                         <p className="text-xs font-medium truncate flex items-center gap-1.5">
                           <span className={`truncate ${isOnline ? "text-zinc-200" : "text-zinc-400"}`}>{p.name}</span>
                           {isMe && (
-                            <span className="text-[10px] font-mono text-zinc-400 bg-zinc-950 px-1 rounded">
+                            <span className="text-[10px] font-mono text-zinc-400 bg-zinc-950 px-1 rounded shrink-0">
                               you
                             </span>
                           )}
@@ -732,6 +757,20 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                         )}
                       </div>
                     </div>
+
+                    {!isMe && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const targetDm = getDmRoomId(userId, p.id);
+                          router.push(`/room/${targetDm}`);
+                        }}
+                        title={`Kirim DM ke ${p.name}`}
+                        className="opacity-0 group-hover:opacity-100 hover:opacity-100 p-1.5 rounded-md hover:bg-zinc-700/80 text-zinc-400 hover:text-indigo-300 transition-all duration-150 shrink-0"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -786,8 +825,9 @@ export default function RoomChatPage({ params }: RoomPageProps) {
               <ArrowLeft className="w-4 h-4" />
             </Link>
             <div>
-              <h1 className="font-semibold text-sm text-zinc-100 truncate max-w-[150px]">
-                {roomName}
+              <h1 className="font-semibold text-sm text-zinc-100 truncate max-w-[150px] flex items-center gap-1.5">
+                {isDm && <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+                <span className="truncate">{effectiveRoomTitle}</span>
               </h1>
               <p className="text-[10px] text-zinc-400 flex items-center gap-1 font-mono">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -816,12 +856,22 @@ export default function RoomChatPage({ params }: RoomPageProps) {
           {/* Welcome Card Banner */}
           <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-5 max-w-md mx-auto text-center shadow-sm">
             <div className="w-9 h-9 rounded-xl bg-zinc-800 text-zinc-200 flex items-center justify-center mx-auto mb-2.5 shadow-sm">
-              <Sparkles className="w-4 h-4 text-indigo-400" />
+              {isDm ? (
+                <Lock className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Sparkles className="w-4 h-4 text-indigo-400" />
+              )}
             </div>
-            <h3 className="font-semibold text-sm text-zinc-100">{roomName}</h3>
+            <h3 className="font-semibold text-sm text-zinc-100">{effectiveRoomTitle}</h3>
             <p className="text-xs text-zinc-400 mt-1">
-              Real-time room stream active. Invite your peers with code:{" "}
-              <span className="font-mono font-semibold text-zinc-200">{roomId}</span>
+              {isDm ? (
+                <span>Obrolan langsung 1-on-1 terenkripsi. Riwayat pesan tersimpan otomatis di cloud.</span>
+              ) : (
+                <span>
+                  Real-time room stream active. Invite your peers with code:{" "}
+                  <span className="font-mono font-semibold text-zinc-200">{roomId}</span>
+                </span>
+              )}
             </p>
           </div>
 

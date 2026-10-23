@@ -30,7 +30,7 @@ export async function POST(
       );
     }
 
-    const message = addMessage(roomId, {
+    const message = await addMessage(roomId, {
       senderId: body.senderId,
       senderName: body.senderName,
       senderAvatar: body.senderAvatar || "☕",

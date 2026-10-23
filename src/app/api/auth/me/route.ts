@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Sesi kedaluwarsa atau tidak valid." }, { status: 401 });
     }
 
-    const user = getUserById(payload.id);
+    const user = await getUserById(payload.id);
 
     return NextResponse.json({
       success: true,

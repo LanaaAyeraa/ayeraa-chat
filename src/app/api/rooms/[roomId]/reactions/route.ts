@@ -20,7 +20,7 @@ export async function POST(
       );
     }
 
-    const updatedMessage = toggleReaction(
+    const updatedMessage = await toggleReaction(
       roomId,
       body.messageId,
       body.userId,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { registerParticipant } from "@/lib/roomStore";
+import { registerParticipant, syncRoomFromStorage } from "@/lib/roomStore";
 
 interface RouteProps {
   params: Promise<{ roomId: string }>;
@@ -19,6 +19,9 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    // Restore chat history from persistent storage if newly spin-up or fresh join
+    await syncRoomFromStorage(roomId);
 
     const room = registerParticipant(roomId, {
       id: body.id,

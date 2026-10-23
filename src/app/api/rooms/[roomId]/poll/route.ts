@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDelta } from "@/lib/roomStore";
+import { getDelta, syncRoomFromStorage } from "@/lib/roomStore";
 
 interface RouteProps {
   params: Promise<{ roomId: string }>;
@@ -16,6 +16,11 @@ export async function GET(
     const userId = searchParams.get("userId") || undefined;
     const userName = searchParams.get("userName") || undefined;
     const userAvatar = searchParams.get("userAvatar") || undefined;
+
+    // If initial load or cold start, restore history from Blob storage
+    if (since === 0) {
+      await syncRoomFromStorage(roomId);
+    }
 
     const delta = getDelta(roomId, since, userId, userName, userAvatar);
 

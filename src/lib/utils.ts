@@ -52,6 +52,26 @@ export function formatBytes(bytes: number, decimals = 1): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
 }
 
+export function getDmRoomId(userAId: string, userBId: string): string {
+  const sorted = [userAId.trim(), userBId.trim()].sort();
+  return `dm--${sorted[0]}--${sorted[1]}`.toLowerCase();
+}
+
+export function isDmRoom(roomId: string): boolean {
+  return typeof roomId === "string" && roomId.toLowerCase().startsWith("dm--");
+}
+
+export function getDmPeerId(roomId: string, currentUserId: string): string | null {
+  if (!isDmRoom(roomId)) return null;
+  const parts = roomId.split("--");
+  if (parts.length >= 3) {
+    const id1 = parts[1];
+    const id2 = parts[2];
+    return id1.toLowerCase() === currentUserId.toLowerCase() ? id2 : id1;
+  }
+  return null;
+}
+
 export function processAvatarImage(file: File, size = 128): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith("image/")) {
