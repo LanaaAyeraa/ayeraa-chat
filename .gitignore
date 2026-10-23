@@ -5,6 +5,10 @@ node_modules
 .DS_Store
 dist/
 *.exe
+*.apk
+*.idsig
 desktop/
 
 .env*
+android/build/
+*.keystore

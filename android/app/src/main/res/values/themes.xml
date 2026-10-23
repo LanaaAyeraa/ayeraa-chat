@@ -1,0 +1,12 @@
+<resources>
+    <style name="Theme.AyeraaChat" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:colorPrimary">@color/accent_indigo</item>
+        <item name="android:colorPrimaryDark">@color/bg_dark</item>
+        <item name="android:colorAccent">@color/accent_terracotta</item>
+        <item name="android:windowBackground">@color/bg_dark</item>
+        <item name="android:statusBarColor">@color/surface_dark</item>
+        <item name="android:navigationBarColor">@color/surface_dark</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+    </style>
+</resources>
