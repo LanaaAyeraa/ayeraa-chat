@@ -14,6 +14,14 @@ export interface ReplyContext {
   content: string;
 }
 
+export interface Attachment {
+  url: string;        // Data URL (base64) or remote URL
+  name: string;       // Original filename
+  size: number;       // File size in bytes
+  type: string;       // MIME type (e.g. image/jpeg, application/pdf)
+  isImage: boolean;   // Quick discriminator for image vs file
+}
+
 export interface Message {
   id: string;
   roomId: string;
@@ -21,6 +29,7 @@ export interface Message {
   senderName: string;
   senderAvatar: string;
   content: string;
+  attachment?: Attachment;
   timestamp: number;
   updatedAt?: number;
   replyTo?: ReplyContext;

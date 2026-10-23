@@ -49,7 +49,7 @@ def run_hardtest():
     print("=" * 60)
     
     passed = 0
-    total = 10
+    total = 11
     test_run_id = f"ht-{int(time.time())}"
     room_id = f"ayeraa-test-{test_run_id}"
 
@@ -237,25 +237,66 @@ def run_hardtest():
     passed += 1
 
     # ---------------------------------------------------------
-    # TEST 9: Error Boundaries (404, 400, Malformed Input)
+    # TEST 9: File & Image Attachment Transmission
     # ---------------------------------------------------------
-    print("\n[TEST 9/10] Verifying Error Boundaries & Input Validation...")
+    print("\n[TEST 9/11] Sending Image & Document Attachments...")
+    # Send image attachment
+    status, res_img_msg, _ = request_json(f"{BASE_URL}/api/rooms/{room_id}/messages", "POST", {
+        "senderId": f"u-alice-{test_run_id}",
+        "senderName": "Alice Wonderland",
+        "senderAvatar": "🦊",
+        "content": "Here is our design diagram!",
+        "attachment": {
+            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+            "name": "architecture.png",
+            "size": 128,
+            "type": "image/png",
+            "isImage": True
+        }
+    })
+    assert status == 200 and res_img_msg["success"] is True
+    assert res_img_msg["message"]["attachment"]["name"] == "architecture.png"
+    assert res_img_msg["message"]["attachment"]["isImage"] is True
+
+    # Send document attachment (PDF) without caption text
+    status, res_doc_msg, _ = request_json(f"{BASE_URL}/api/rooms/{room_id}/messages", "POST", {
+        "senderId": f"u-bob-{test_run_id}",
+        "senderName": "Bob Builder",
+        "senderAvatar": "🦉",
+        "attachment": {
+            "url": "data:application/pdf;base64,JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoKPDwvTGVuZ3RoIDM2Pj5Kc3RyZWFtCkJULyAxMiBUZihIZWxsbyBXb3JsZCkgVGpFVAplbmRzdHJlYW0KZW5kb2JqCg==",
+            "name": "project-brief.pdf",
+            "size": 105,
+            "type": "application/pdf",
+            "isImage": False
+        }
+    })
+    assert status == 200 and res_doc_msg["success"] is True
+    assert res_doc_msg["message"]["attachment"]["name"] == "project-brief.pdf"
+    assert res_doc_msg["message"]["attachment"]["isImage"] is False
+    print("✅ TEST 9 PASSED: Images and documents transmitted & stored cleanly.")
+    passed += 1
+
+    # ---------------------------------------------------------
+    # TEST 10: Error Boundaries (404, 400, Malformed Input)
+    # ---------------------------------------------------------
+    print("\n[TEST 10/11] Verifying Error Boundaries & Input Validation...")
     # Bad join (missing name)
     s1, r1, _ = request_json(f"{BASE_URL}/api/rooms/{room_id}/join", "POST", {"id": "bad-u"})
     assert s1 == 400, f"Expected 400 on missing name, got {s1}"
 
-    # Bad message (missing content)
+    # Bad message (missing both content AND attachment)
     s2, r2, _ = request_json(f"{BASE_URL}/api/rooms/{room_id}/messages", "POST", {
         "senderId": "u1", "senderName": "U1"
     })
-    assert s2 == 400, f"Expected 400 on missing content, got {s2}"
-    print("✅ TEST 9 PASSED: Input validation blocks invalid payloads with 400 Bad Request.")
+    assert s2 == 400, f"Expected 400 on missing content/attachment, got {s2}"
+    print("✅ TEST 10 PASSED: Input validation blocks invalid payloads with 400 Bad Request.")
     passed += 1
 
     # ---------------------------------------------------------
-    # TEST 10: Performance, Latency & Headers
+    # TEST 11: Performance, Latency & Headers
     # ---------------------------------------------------------
-    print("\n[TEST 10/10] Latency & Header Security Audit...")
+    print("\n[TEST 11/11] Latency & Header Security Audit...")
     latencies = []
     for _ in range(5):
         t0 = time.time()

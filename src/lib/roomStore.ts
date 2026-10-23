@@ -1,4 +1,4 @@
-import { Room, Participant, Message } from "@/types/chat";
+import { Room, Participant, Message, Attachment } from "@/types/chat";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -115,7 +115,8 @@ export function addMessage(
     senderId: string;
     senderName: string;
     senderAvatar: string;
-    content: string;
+    content?: string;
+    attachment?: Attachment;
     replyTo?: { id: string; senderName: string; content: string };
   }
 ): Message {
@@ -127,7 +128,8 @@ export function addMessage(
     senderId: params.senderId,
     senderName: params.senderName,
     senderAvatar: params.senderAvatar,
-    content: params.content.trim().slice(0, 4000), // Enforce 4000 char limit
+    content: (params.content || "").trim().slice(0, 4000), // Enforce 4000 char limit for text caption
+    attachment: params.attachment,
     timestamp: now,
     updatedAt: now,
     replyTo: params.replyTo,

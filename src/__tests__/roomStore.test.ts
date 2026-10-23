@@ -137,4 +137,31 @@ describe("Ayeraa Chat Room Store (Penta-Engine Business Logic)", () => {
     expect(delta?.participants[0].name).toBe("Ghost Walker");
     expect(delta?.participants[0].isOnline).toBe(true);
   });
+
+  it("should support messages with file and image attachments", () => {
+    const roomId = "attachment-haven-777";
+    registerParticipant(roomId, { id: "user-art", name: "Artist", avatar: "🎨" });
+
+    const msg = addMessage(roomId, {
+      senderId: "user-art",
+      senderName: "Artist",
+      senderAvatar: "🎨",
+      content: "Check out this concept art!",
+      attachment: {
+        url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+        name: "concept.png",
+        size: 120,
+        type: "image/png",
+        isImage: true,
+      },
+    });
+
+    expect(msg.attachment).toBeDefined();
+    expect(msg.attachment?.name).toBe("concept.png");
+    expect(msg.attachment?.isImage).toBe(true);
+
+    const delta = getDelta(roomId, 0, "user-art");
+    const found = delta?.messages.find((m) => m.id === msg.id);
+    expect(found?.attachment?.url).toContain("data:image/png;base64");
+  });
 });

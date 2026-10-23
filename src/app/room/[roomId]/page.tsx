@@ -16,9 +16,15 @@ import {
   X,
   Sparkles,
   Hash,
+  Paperclip,
+  Image as ImageIcon,
+  FileText,
+  Download,
+  Maximize2,
+  UploadCloud,
 } from "lucide-react";
-import { Message, Participant, ReplyContext } from "@/types/chat";
-import { formatTimestamp, AVATAR_OPTIONS } from "@/lib/utils";
+import { Message, Participant, ReplyContext, Attachment } from "@/types/chat";
+import { formatTimestamp, formatBytes, AVATAR_OPTIONS } from "@/lib/utils";
 import { sound } from "@/lib/sound";
 import { DynamicIsland } from "@/components/amicro/DynamicIsland";
 
@@ -51,6 +57,10 @@ export default function RoomChatPage({ params }: RoomPageProps) {
   const [replyTarget, setReplyTarget] = useState<ReplyContext | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null);
+  const [pendingAttachment, setPendingAttachment] = useState<Attachment | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<Attachment | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -59,6 +69,8 @@ export default function RoomChatPage({ params }: RoomPageProps) {
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const userNameRef = useRef<string>(userName);
   const userAvatarRef = useRef<string>(userAvatar);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     userNameRef.current = userName;
@@ -289,15 +301,154 @@ export default function RoomChatPage({ params }: RoomPageProps) {
     }, 2000);
   };
 
+  const processImageFile = (file: File): Promise<Attachment> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const MAX_DIM = 1600;
+          let { width, height } = img;
+          if (width > MAX_DIM || height > MAX_DIM) {
+            if (width > height) {
+              height = Math.round((height * MAX_DIM) / width);
+              width = MAX_DIM;
+            } else {
+              width = Math.round((width * MAX_DIM) / height);
+              height = MAX_DIM;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve({
+              url: e.target?.result as string,
+              name: file.name,
+              size: file.size,
+              type: file.type || "image/jpeg",
+              isImage: true,
+            });
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+          const head = "data:image/jpeg;base64,";
+          const approxSize = Math.round(((dataUrl.length - head.length) * 3) / 4);
+          resolve({
+            url: dataUrl,
+            name: file.name,
+            size: approxSize,
+            type: "image/jpeg",
+            isImage: true,
+          });
+        };
+        img.onerror = () => reject(new Error("Failed to load image"));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleSelectFile = async (e: React.ChangeEvent<HTMLInputElement>, forceImage = false) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 4.5 * 1024 * 1024 && !file.type.startsWith("image/")) {
+      alert("File size exceeds 4.5MB serverless limit. Please choose a smaller file.");
+      e.target.value = "";
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      if (file.type.startsWith("image/") || forceImage) {
+        const att = await processImageFile(file);
+        setPendingAttachment(att);
+      } else {
+        const reader = new FileReader();
+        reader.onload = (loadEv) => {
+          setPendingAttachment({
+            url: loadEv.target?.result as string,
+            name: file.name,
+            size: file.size,
+            type: file.type || "application/octet-stream",
+            isImage: false,
+          });
+          setIsUploading(false);
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+    } catch (err) {
+      console.error("Error reading file:", err);
+    } finally {
+      setIsUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      if (file.type.startsWith("image/")) {
+        const att = await processImageFile(file);
+        setPendingAttachment(att);
+      } else {
+        if (file.size > 4.5 * 1024 * 1024) {
+          alert("File size exceeds 4.5MB serverless limit.");
+          setIsUploading(false);
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = (loadEv) => {
+          setPendingAttachment({
+            url: loadEv.target?.result as string,
+            name: file.name,
+            size: file.size,
+            type: file.type || "application/octet-stream",
+            isImage: false,
+          });
+          setIsUploading(false);
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+    } catch {
+      // recovery
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const content = inputText.trim();
-    if (!content || !userId) return;
+    if ((!content && !pendingAttachment) || !userId) return;
 
     sound.playSend();
     setInputText("");
     const reply = replyTarget;
+    const attachmentToSend = pendingAttachment;
     setReplyTarget(null);
+    setPendingAttachment(null);
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     setIsTyping(false);
@@ -311,6 +462,7 @@ export default function RoomChatPage({ params }: RoomPageProps) {
           senderName: userName,
           senderAvatar: userAvatar,
           content,
+          attachment: attachmentToSend || undefined,
           replyTo: reply ? {
             id: reply.id,
             senderName: reply.senderName,
@@ -513,7 +665,24 @@ export default function RoomChatPage({ params }: RoomPageProps) {
       </aside>
 
       {/* Main Chat Workspace */}
-      <div className="flex-1 flex flex-col h-full bg-zinc-950 relative pt-12 md:pt-0">
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className="flex-1 flex flex-col h-full bg-zinc-950 relative pt-12 md:pt-0"
+      >
+        {/* Drag and Drop Zone Overlay */}
+        {isDragOver && (
+          <div className="absolute inset-4 z-50 rounded-2xl bg-zinc-950/90 border-2 border-dashed border-indigo-500/80 backdrop-blur-md flex flex-col items-center justify-center gap-3 animate-amicro-fade pointer-events-none shadow-2xl">
+            <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 animate-bounce">
+              <UploadCloud className="w-8 h-8" />
+            </div>
+            <div className="text-center">
+              <p className="text-base font-semibold text-zinc-100">Drop your file or image here</p>
+              <p className="text-xs text-zinc-400 mt-1">Files under 4.5MB will be attached to Ayeraa Chat</p>
+            </div>
+          </div>
+        )}
         {/* Mobile Navbar Header */}
         <header className="h-14 border-b border-zinc-800 bg-zinc-900/80 flex items-center justify-between px-4 md:hidden shrink-0 backdrop-blur-md">
           <div className="flex items-center gap-2.5">
@@ -618,7 +787,74 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                         : "bg-zinc-900 text-zinc-100 border border-zinc-800 rounded-tl-sm hover:border-zinc-700"
                     }`}
                   >
-                    <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                    {/* Attached Image or File Document */}
+                    {msg.attachment && (
+                      <div className="mb-2">
+                        {msg.attachment.isImage ? (
+                          <div className="group/img relative rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950/60 max-w-sm shadow-sm">
+                            <img
+                              src={msg.attachment.url}
+                              alt={msg.attachment.name}
+                              onClick={() => setLightboxImage(msg.attachment!)}
+                              className="w-full max-h-72 object-cover cursor-pointer transition-transform duration-200 hover:scale-[1.02]"
+                              loading="lazy"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover/img:opacity-100 transition-opacity flex items-end justify-between p-2.5">
+                              <span className="text-[11px] text-zinc-200 font-mono truncate max-w-[180px]">
+                                {formatBytes(msg.attachment.size)}
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setLightboxImage(msg.attachment!);
+                                  }}
+                                  className="p-1 rounded-md bg-zinc-900/90 text-zinc-200 hover:text-white transition-all active:scale-90"
+                                  title="View full image"
+                                >
+                                  <Maximize2 className="w-3.5 h-3.5" />
+                                </button>
+                                <a
+                                  href={msg.attachment.url}
+                                  download={msg.attachment.name}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="p-1 rounded-md bg-zinc-900/90 text-zinc-200 hover:text-white transition-all active:scale-90"
+                                  title="Download image"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <a
+                            href={msg.attachment.url}
+                            download={msg.attachment.name}
+                            className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-150 active:scale-[0.98] ${
+                              isMe
+                                ? "bg-zinc-200/90 border-zinc-300 text-zinc-900 hover:bg-zinc-200"
+                                : "bg-zinc-950/80 border-zinc-800 text-zinc-100 hover:border-zinc-700"
+                            }`}
+                          >
+                            <div className="w-9 h-9 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-indigo-400 shrink-0">
+                              <FileText className="w-5 h-5" />
+                            </div>
+                            <div className="truncate flex-1">
+                              <p className="text-xs font-medium truncate">{msg.attachment.name}</p>
+                              <p className={`text-[10px] font-mono mt-0.5 ${isMe ? "text-zinc-600" : "text-zinc-400"}`}>
+                                {formatBytes(msg.attachment.size)}
+                              </p>
+                            </div>
+                            <Download className="w-4 h-4 opacity-70 hover:opacity-100 shrink-0" />
+                          </a>
+                        )}
+                      </div>
+                    )}
+
+                    {msg.content && (
+                      <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                    )}
 
                     {/* Floating Hover Actions (Amicro Spring Pill) */}
                     <div
@@ -740,8 +976,58 @@ export default function RoomChatPage({ params }: RoomPageProps) {
           </div>
         )}
 
+        {/* Pending Attachment Preview Banner */}
+        {pendingAttachment && (
+          <div className="mx-4 sm:mx-6 mb-2 p-2.5 rounded-xl bg-zinc-900 border border-zinc-700/80 flex items-center justify-between shadow-lg animate-amicro-pop">
+            <div className="flex items-center gap-3 truncate">
+              {pendingAttachment.isImage ? (
+                <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-zinc-700 shrink-0 bg-zinc-950">
+                  <img
+                    src={pendingAttachment.url}
+                    alt={pendingAttachment.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-10 h-10 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300 shrink-0">
+                  <FileText className="w-5 h-5 text-indigo-400" />
+                </div>
+              )}
+              <div className="truncate">
+                <p className="font-medium text-xs text-zinc-200 truncate">{pendingAttachment.name}</p>
+                <p className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                  {formatBytes(pendingAttachment.size)} • Ready to send
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPendingAttachment(null)}
+              className="text-zinc-400 hover:text-zinc-100 p-1.5 rounded-lg hover:bg-zinc-800 transition-all active:scale-90"
+              title="Remove attachment"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Input Box Dock (Amicro Tactile Dock) */}
         <div className="p-4 sm:p-5 bg-zinc-950 border-t border-zinc-800/90 shrink-0">
+          {/* Hidden File Inputs */}
+          <input
+            type="file"
+            ref={imageInputRef}
+            accept="image/*"
+            onChange={(e) => handleSelectFile(e, true)}
+            className="hidden"
+          />
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={(e) => handleSelectFile(e, false)}
+            className="hidden"
+          />
+
           <form onSubmit={handleSendMessage} className="flex items-end gap-2">
             <div className="flex-1 bg-zinc-900/90 border border-zinc-800 focus-within:border-zinc-600 rounded-2xl p-2.5 transition-all duration-200 flex flex-col shadow-inner">
               <textarea
@@ -754,11 +1040,40 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                   }
                 }}
                 rows={1}
-                placeholder={`Message #${roomName}... (Enter to send)`}
+                placeholder={
+                  pendingAttachment
+                    ? "Add a caption to this file... (Enter to send)"
+                    : `Message #${roomName}... (Enter to send, drop file/image)`
+                }
                 className="w-full bg-transparent border-0 resize-none text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none max-h-32 px-1"
               />
               <div className="flex items-center justify-between pt-1 border-t border-transparent">
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
+                  {/* Photo / Image Upload Button */}
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="p-1 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/80 transition-all active:scale-90"
+                    title="Send Image (PNG, JPG, WebP)"
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                  </button>
+
+                  {/* Document / File Upload Button */}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="p-1 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/80 transition-all active:scale-90"
+                    title="Attach File (PDF, DOCX, ZIP, etc.)"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                  </button>
+
+                  <div className="h-3 w-px bg-zinc-800 mx-0.5" />
+
+                  {/* Emoji Quick Picker */}
                   {POPULAR_REACTIONS.slice(0, 4).map((em) => (
                     <button
                       key={em}
@@ -770,22 +1085,62 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                     </button>
                   ))}
                 </div>
+
                 <span className="text-[10px] text-zinc-500 font-mono pr-1">
-                  amicro ready
+                  {isUploading ? "compressing..." : "amicro file sync"}
                 </span>
               </div>
             </div>
 
             <button
               type="submit"
-              disabled={!inputText.trim()}
-              className="h-11 w-11 rounded-xl bg-zinc-100 hover:bg-white text-zinc-950 flex items-center justify-center shrink-0 shadow-sm transition-all duration-150 active:scale-[0.94] hover:shadow-[0_0_15px_rgba(255,255,255,0.25)] disabled:opacity-40"
+              disabled={(!inputText.trim() && !pendingAttachment) || isUploading}
+              className="h-11 w-11 rounded-xl bg-zinc-100 hover:bg-white text-zinc-950 flex items-center justify-center shrink-0 shadow-sm transition-all duration-150 active:scale-[0.94] hover:shadow-[0_0_15px_rgba(255,255,255,0.25)] disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
             >
               <Send className="w-4 h-4" />
             </button>
           </form>
         </div>
       </div>
-    </div>
+
+      {/* Fullscreen Image Lightbox Modal */}
+      {lightboxImage && (
+        <div
+          onClick={() => setLightboxImage(null)}
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 select-none animate-amicro-fade"
+        >
+          <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
+            <button
+              onClick={() => setLightboxImage(null)}
+              className="absolute -top-12 right-0 p-2 text-zinc-400 hover:text-white rounded-full bg-zinc-900/80 border border-zinc-800 cursor-pointer"
+              title="Close (Esc)"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img
+              src={lightboxImage.url}
+              alt={lightboxImage.name}
+              className="max-w-full max-h-[80vh] rounded-xl object-contain border border-zinc-800 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div
+              className="mt-3 flex items-center justify-between w-full text-xs text-zinc-300 px-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span className="truncate max-w-md font-mono">
+                {lightboxImage.name} ({formatBytes(lightboxImage.size)})
+              </span>
+              <a
+                href={lightboxImage.url}
+                download={lightboxImage.name}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-all active:scale-95"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
   );
 }
