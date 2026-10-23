@@ -8,7 +8,7 @@ declare global {
 const rooms: Map<string, Room> = globalThis.__ayeraaChatRooms ?? new Map<string, Room>();
 globalThis.__ayeraaChatRooms = rooms;
 
-const PARTICIPANT_ACTIVE_TIMEOUT_MS = 90000; // 90s for presence dot
+const PARTICIPANT_ACTIVE_TIMEOUT_MS = 15000; // 15s for accurate presence dot
 const PARTICIPANT_EVICTION_TIMEOUT_MS = 3600000; // 1 hour retainment
 const MAX_MESSAGES_PER_ROOM = 500;
 const MAX_ROOMS = 100;
@@ -107,6 +107,16 @@ export function registerParticipant(
   }
 
   return room;
+}
+
+export function leaveRoom(roomId: string, userId: string): void {
+  const room = rooms.get(roomId.trim().toLowerCase());
+  if (!room) return;
+  if (room.participants[userId]) {
+    // Mark as inactive beyond active timeout (17s ago) so user stays in list but is immediately offline/away
+    room.participants[userId].lastActiveAt = Date.now() - PARTICIPANT_ACTIVE_TIMEOUT_MS - 2000;
+    room.participants[userId].isTyping = false;
+  }
 }
 
 export function addMessage(

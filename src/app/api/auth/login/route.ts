@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = loginUser(username, password, credentialToken);
+    const result = await loginUser(username, password, credentialToken);
 
     if (!result.success) {
       return NextResponse.json(

@@ -1,8 +1,16 @@
 import crypto from "crypto";
+import fs from "fs";
 import { User, StoredUser, SessionTokenPayload, AuthResponse } from "@/types/auth";
 
 const AUTH_SECRET = process.env.AYERAA_AUTH_SECRET || "ayeraa_chat_secret_key_2026_zinc_ultra_secure_token";
 const TOKEN_EXPIRY_DAYS = 30;
+
+const USERS_BLOB_PATH = "ayeraa_accounts_v1.json";
+const USERS_BLOB_URL = "https://itf3zssu2lgjc6ov.public.blob.vercel-storage.com/ayeraa_accounts_v1.json";
+const BLOB_READ_WRITE_TOKEN =
+  process.env.BLOB_READ_WRITE_TOKEN ||
+  "vercel_blob_rw_ITF3zssU2LGjc6OV_hxJF6c5r5LcxswYaItHqMtoG818Fdg";
+const TMP_USERS_FILE = "/tmp/ayeraa_accounts_v1.json";
 
 // Global container storage
 declare global {
@@ -51,6 +59,109 @@ function base64UrlDecode(str: string): string {
   }
   return Buffer.from(base64, "base64").toString("utf8");
 }
+
+// Sync users from persistent storage into in-memory container maps (LWW merge)
+export async function syncUsersFromStorage(): Promise<void> {
+  const users = getUsersMap();
+  const usernames = getUsernamesMap();
+
+  // 1. Try local /tmp file
+  try {
+    if (fs.existsSync(TMP_USERS_FILE)) {
+      const content = fs.readFileSync(TMP_USERS_FILE, "utf-8");
+      const list: StoredUser[] = JSON.parse(content);
+      for (const u of list) {
+        const existing = users.get(u.id);
+        if (!existing || (u.updatedAt || u.createdAt || 0) >= (existing.updatedAt || existing.createdAt || 0)) {
+          users.set(u.id, u);
+          usernames.set(u.username.toLowerCase(), u.id);
+        }
+      }
+    }
+  } catch {
+    // ignore local read error
+  }
+
+  // 2. Try Vercel Blob CDN URL with strict anti-cache headers
+  try {
+    const res = await fetch(`${USERS_BLOB_URL}?t=${Date.now()}`, {
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+      },
+    });
+    if (res.ok) {
+      const list: StoredUser[] = await res.json();
+      for (const u of list) {
+        const existing = users.get(u.id);
+        if (!existing || (u.updatedAt || u.createdAt || 0) >= (existing.updatedAt || existing.createdAt || 0)) {
+          users.set(u.id, u);
+          usernames.set(u.username.toLowerCase(), u.id);
+        }
+      }
+    }
+  } catch {
+    // ignore fetch error
+  }
+}
+
+// Persist all users to storage (/tmp file + Vercel Blob) with conflict-free merge
+export async function persistUsersToStorage(): Promise<void> {
+  const users = getUsersMap();
+  const usernames = getUsernamesMap();
+
+  // Conflict-Free Merge: Fetch latest remote blob first to capture concurrent writes from other containers
+  try {
+    const res = await fetch(`${USERS_BLOB_URL}?t=${Date.now()}`, {
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+      },
+    });
+    if (res.ok) {
+      const remoteList: StoredUser[] = await res.json();
+      for (const r of remoteList) {
+        const local = users.get(r.id);
+        if (!local) {
+          // User registered concurrently on another container
+          users.set(r.id, r);
+          usernames.set(r.username.toLowerCase(), r.id);
+        } else if ((r.updatedAt || r.createdAt || 0) > (local.updatedAt || local.createdAt || 0)) {
+          // Remote was updated more recently
+          users.set(r.id, r);
+          usernames.set(r.username.toLowerCase(), r.id);
+        }
+      }
+    }
+  } catch {
+    // ignore remote fetch error
+  }
+
+  const allUsers = Array.from(users.values());
+  const jsonStr = JSON.stringify(allUsers);
+
+  // 1. Local /tmp write
+  try {
+    fs.writeFileSync(TMP_USERS_FILE, jsonStr, "utf-8");
+  } catch {
+    // ignore
+  }
+
+  // 2. Vercel Blob write (cross-container cloud persistence)
+  try {
+    const { put } = await import("@vercel/blob");
+    await put(USERS_BLOB_PATH, jsonStr, {
+      access: "public",
+      addRandomSuffix: false,
+      token: BLOB_READ_WRITE_TOKEN,
+    });
+  } catch {
+    // Silently continue if blob put is not available in local environment
+  }
+}
+
 
 // Stateless signed credential token (Self-healing across serverless containers)
 export function createCredentialToken(storedUser: StoredUser): string {
@@ -176,14 +287,17 @@ function toPublicUser(stored: StoredUser): User {
   };
 }
 
-// Register user
-export function registerUser(
+// Register user (with cross-container cloud persistence)
+export async function registerUser(
   usernameInput: string,
   passwordInput: string,
   nameInput?: string,
   avatarInput?: string,
   bioInput?: string
-): AuthResponse {
+): Promise<AuthResponse> {
+  // Sync first to verify username uniqueness against other containers
+  await syncUsersFromStorage();
+
   const users = getUsersMap();
   const usernames = getUsernamesMap();
 
@@ -227,6 +341,9 @@ export function registerUser(
   users.set(userId, newUser);
   usernames.set(cleanUsername, userId);
 
+  // Persist to storage across all containers
+  await persistUsersToStorage();
+
   const publicUser = toPublicUser(newUser);
   const token = createSessionToken(publicUser);
   const credentialToken = createCredentialToken(newUser);
@@ -239,19 +356,19 @@ export function registerUser(
   };
 }
 
-// Login user
-export function loginUser(
+// Login user (with cross-container sync)
+export async function loginUser(
   usernameInput: string,
   passwordInput: string,
   credentialToken?: string
-): AuthResponse {
+): Promise<AuthResponse> {
   const users = getUsersMap();
   const usernames = getUsernamesMap();
 
   const cleanUsername = usernameInput.trim().toLowerCase();
   let userId = usernames.get(cleanUsername);
 
-  // Self-heal from client-grounded credential token if container restarted
+  // 1. If not found in memory, try credentialToken
   if ((!userId || !users.has(userId)) && credentialToken) {
     const recovered = verifyCredentialToken(credentialToken);
     if (recovered && recovered.username.toLowerCase() === cleanUsername) {
@@ -261,13 +378,19 @@ export function loginUser(
     }
   }
 
+  // 2. If still not in memory, sync from persistent storage (Vercel Blob / /tmp)
+  if (!userId || !users.has(userId)) {
+    await syncUsersFromStorage();
+    userId = usernames.get(cleanUsername);
+  }
+
   if (!userId || !users.has(userId)) {
     return { success: false, error: "Username atau password salah." };
   }
 
   const stored = users.get(userId)!;
   if (!stored.passwordHash || !stored.salt) {
-    return { success: false, error: "Akun ini menggunakan metode login Google." };
+    return { success: false, error: "Akun ini menggunakan metode login lain." };
   }
 
   const computedHash = hashPassword(passwordInput, stored.salt);
@@ -295,7 +418,7 @@ export function getUserById(userId: string): User | null {
 }
 
 // Update profile
-export function updateUserProfile(
+export async function updateUserProfile(
   userId: string,
   updates: {
     name?: string;
@@ -304,9 +427,14 @@ export function updateUserProfile(
     newPassword?: string;
     oldPassword?: string;
   }
-): AuthResponse {
+): Promise<AuthResponse> {
   const users = getUsersMap();
-  const stored = users.get(userId);
+  let stored = users.get(userId);
+
+  if (!stored) {
+    await syncUsersFromStorage();
+    stored = users.get(userId);
+  }
 
   if (!stored) {
     return { success: false, error: "Pengguna tidak ditemukan." };
@@ -346,6 +474,9 @@ export function updateUserProfile(
 
   stored.updatedAt = Date.now();
   users.set(userId, stored);
+
+  // Persist update across containers
+  await persistUsersToStorage();
 
   const publicUser = toPublicUser(stored);
   const token = createSessionToken(publicUser);
@@ -401,7 +532,7 @@ export function handleGoogleAuth(profile: {
     username,
     name: profile.name || username,
     avatar: profile.picture || "✨",
-    bio: "Pengguna Ayeraa Chat via Google",
+    bio: "Pengguna Ayeraa Chat",
     provider: "google",
     createdAt: Date.now(),
     updatedAt: Date.now(),

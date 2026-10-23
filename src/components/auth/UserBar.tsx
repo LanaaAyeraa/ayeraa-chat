@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { ProfileModal } from "@/components/auth/ProfileModal";
+import { Avatar } from "@/components/ui/Avatar";
 import { Settings, LogOut } from "lucide-react";
 
 export function UserBar() {
@@ -16,18 +17,7 @@ export function UserBar() {
       <div className="flex items-center justify-between p-3 md:px-5 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 backdrop-blur-md shadow-lg max-w-xl mx-auto mb-6">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-700/80 flex items-center justify-center text-xl shadow-inner">
-              {user.avatar.startsWith("http") ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={user.avatar}
-                  alt={user.name}
-                  className="w-full h-full object-cover rounded-xl"
-                />
-              ) : (
-                user.avatar
-              )}
-            </div>
+            <Avatar src={user.avatar} size="lg" className="shadow-inner" />
             <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-zinc-950 rounded-full" />
           </div>
 

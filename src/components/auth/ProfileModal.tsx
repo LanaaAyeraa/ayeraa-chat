@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { AVATAR_OPTIONS } from "@/lib/utils";
+import { AVATAR_OPTIONS, processAvatarImage } from "@/lib/utils";
+import { Avatar } from "@/components/ui/Avatar";
 import {
   X,
   User as UserIcon,
@@ -12,6 +13,8 @@ import {
   KeyRound,
   AlertCircle,
   CheckCircle2,
+  Camera,
+  RefreshCw,
 } from "lucide-react";
 
 export function ProfileModal({
@@ -31,6 +34,19 @@ export function ProfileModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await processAvatarImage(file, 128);
+      setAvatar(dataUrl);
+      setError(null);
+    } catch (err: any) {
+      setError(err?.message || "Gagal memproses gambar avatar.");
+    }
+  };
 
   if (!isOpen || !user) return null;
 
@@ -85,9 +101,7 @@ export function ProfileModal({
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80 mb-5">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-700 flex items-center justify-center text-sm">
-              {user.avatar}
-            </div>
+            <Avatar src={user.avatar} size="md" />
             <div>
               <h3 className="text-base font-bold text-zinc-100 flex items-center gap-1.5">
                 <span>Pengaturan Profil</span>
@@ -134,18 +148,57 @@ export function ProfileModal({
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1.5 flex items-center justify-between">
-              <span>Ganti Avatar</span>
-              <span className="text-zinc-200 font-bold">{avatar}</span>
-            </label>
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {/* Avatar Selector with Custom Photo Upload */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-zinc-400">
+                Avatar Profil
+              </label>
+              {avatar.startsWith("data:") || avatar.startsWith("http") ? (
+                <button
+                  type="button"
+                  onClick={() => setAvatar("⚡")}
+                  className="text-[11px] text-zinc-400 hover:text-zinc-200 flex items-center gap-1 transition-colors"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>Reset ke Emoji</span>
+                </button>
+              ) : null}
+            </div>
+
+            <div className="flex items-center gap-3 p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80">
+              <Avatar src={avatar} size="lg" className="shadow-md" />
+
+              <div className="flex-1 min-w-0">
+                <input
+                  type="file"
+                  ref={avatarFileInputRef}
+                  onChange={handleAvatarUpload}
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => avatarFileInputRef.current?.click()}
+                  className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/80 text-xs font-medium text-zinc-200 flex items-center gap-1.5 transition-colors"
+                >
+                  <Camera className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Ganti Foto Sendiri</span>
+                </button>
+                <p className="text-[10px] text-zinc-400 mt-1 truncate">
+                  Auto-crop 1:1 persegi (JPG, PNG, WebP)
+                </p>
+              </div>
+            </div>
+
+            {/* Quick emoji presets */}
+            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none pt-0.5">
               {AVATAR_OPTIONS.map((opt) => (
                 <button
                   key={opt}
                   type="button"
                   onClick={() => setAvatar(opt)}
-                  className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg transition-all shrink-0 ${
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center text-base transition-all shrink-0 ${
                     avatar === opt
                       ? "bg-zinc-700 border-2 border-zinc-200 scale-105"
                       : "bg-zinc-900 border border-zinc-800 hover:bg-zinc-800"

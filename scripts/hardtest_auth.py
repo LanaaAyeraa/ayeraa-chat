@@ -50,7 +50,7 @@ def run_tests():
     print("=" * 60)
 
     ts = int(time.time())
-    test_username = f"tester_{ts % 10000}"
+    test_username = f"t_{int(time.time() * 1000) % 1000000}"
     test_password = "SecurePassword123!"
     test_name = "Hardtest Pilot"
 

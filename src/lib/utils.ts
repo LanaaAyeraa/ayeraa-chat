@@ -52,6 +52,51 @@ export function formatBytes(bytes: number, decimals = 1): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
 }
 
+export function processAvatarImage(file: File, size = 128): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith("image/")) {
+      reject(new Error("File harus berupa gambar (JPG, PNG, WebP)"));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Gagal membaca file gambar"));
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Gagal memuat gambar"));
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Canvas context tidak tersedia"));
+          return;
+        }
+
+        // Center crop to 1:1 square
+        const minDim = Math.min(img.width, img.height);
+        const sx = (img.width - minDim) / 2;
+        const sy = (img.height - minDim) / 2;
+
+        ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+
+        // Convert to WebP or JPEG with quality 0.85
+        let dataUrl = "";
+        try {
+          dataUrl = canvas.toDataURL("image/webp", 0.85);
+        } catch {
+          dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+        }
+        resolve(dataUrl);
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export const AVATAR_OPTIONS = [
-  "🦊", "🌿", "☕", "🍂", "🦉", "🕯️", "🌌", "🪴", "🎨", "📻", "🍵", "🧭"
+  "🦊", "🌿", "☕", "🍂", "🦉", "🕯️", "🌌", "🪴", "🎨", "📻", "🍵", "🧭",
+  "⚡", "🚀", "🪐", "🔥", "💎", "👾", "🛡️", "👑", "🦄", "🎧", "🎯", "✨"
 ];

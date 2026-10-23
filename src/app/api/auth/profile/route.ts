@@ -25,7 +25,7 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     const { name, avatar, bio, newPassword, oldPassword } = body;
 
-    const result = updateUserProfile(payload.id, {
+    const result = await updateUserProfile(payload.id, {
       name,
       avatar,
       bio,

@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = registerUser(username, password, name, avatar, bio);
+    const result = await registerUser(username, password, name, avatar, bio);
 
     if (!result.success) {
       return NextResponse.json(

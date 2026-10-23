@@ -29,6 +29,7 @@ import { sound } from "@/lib/sound";
 import { DynamicIsland } from "@/components/amicro/DynamicIsland";
 import { useAuth } from "@/context/AuthContext";
 import { AuthCard } from "@/components/auth/AuthCard";
+import { Avatar } from "@/components/ui/Avatar";
 
 const POPULAR_REACTIONS = ["❤️", "👍", "🔥", "😂", "👏", "🚀"];
 
@@ -140,6 +141,34 @@ export default function RoomChatPage({ params }: RoomPageProps) {
       .catch(() => setHasJoined(true));
   }, [roomId, user, authLoading]);
 
+  // Instant Presence Leave Beacon on Tab Close / Page Unload / Navigation
+  useEffect(() => {
+    if (!roomId || !userId) return;
+
+    const handleLeave = () => {
+      try {
+        const payload = JSON.stringify({ userId });
+        if (navigator.sendBeacon) {
+          const blob = new Blob([payload], { type: "application/json" });
+          navigator.sendBeacon(`/api/rooms/${roomId}/leave`, blob);
+        } else {
+          fetch(`/api/rooms/${roomId}/leave`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: payload,
+            keepalive: true,
+          }).catch(() => {});
+        }
+      } catch {}
+    };
+
+    window.addEventListener("beforeunload", handleLeave);
+    return () => {
+      window.removeEventListener("beforeunload", handleLeave);
+      handleLeave();
+    };
+  }, [roomId, userId]);
+
   // Delta Polling Loop with Visibility Optimization & State Merging
   useEffect(() => {
     if (!hasJoined || !userId) return;
@@ -166,17 +195,25 @@ export default function RoomChatPage({ params }: RoomPageProps) {
           if (data.participants) {
             setParticipants((prev) => {
               const map = new Map<string, Participant>();
+              const now = Date.now();
 
-              // 1. Preserve previously known participants (set isOnline to false as fallback)
+              // 1. Preserve previously known participants with active timestamp check (avoids flapping)
               for (const p of prev) {
-                map.set(p.id, { ...p, isOnline: false });
+                const isActive = (now - (p.lastActiveAt || 0)) < 16000;
+                map.set(p.id, { ...p, isOnline: isActive });
               }
 
               // 2. Overlay incoming participants from server
               for (const inc of data.participants as Participant[]) {
+                const existing = map.get(inc.id);
+                const bestLastActive = Math.max(inc.lastActiveAt || 0, existing?.lastActiveAt || 0);
+                const isActive = (now - bestLastActive) < 16000;
+                const finalOnline = inc.isOnline !== undefined ? (inc.isOnline && isActive) : isActive;
                 map.set(inc.id, {
+                  ...existing,
                   ...inc,
-                  isOnline: inc.isOnline !== undefined ? inc.isOnline : true,
+                  lastActiveAt: bestLastActive,
+                  isOnline: finalOnline,
                 });
               }
 
@@ -200,7 +237,7 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                 const bOnline = b.isOnline !== false;
                 if (aOnline && !bOnline) return -1;
                 if (!aOnline && bOnline) return 1;
-                return b.lastActiveAt - a.lastActiveAt;
+                return (b.lastActiveAt || 0) - (a.lastActiveAt || 0);
               });
             });
           }
@@ -665,8 +702,8 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                     }`}
                   >
                     <div className="flex items-center gap-2.5 truncate">
-                      <div className="relative">
-                        <span className="text-base transition-transform hover:scale-110 cursor-default">{p.avatar}</span>
+                      <div className="relative shrink-0">
+                        <Avatar src={p.avatar} size="sm" className="transition-transform hover:scale-110 cursor-default" />
                         <span
                           className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-zinc-900 ${
                             isOnline
@@ -705,7 +742,7 @@ export default function RoomChatPage({ params }: RoomPageProps) {
         {/* Sidebar Footer Controls */}
         <div className="p-3.5 border-t border-zinc-800 bg-zinc-950/80 flex items-center justify-between">
           <div className="flex items-center gap-2.5 truncate">
-            <span className="text-lg transition-transform hover:scale-110">{userAvatar}</span>
+            <Avatar src={userAvatar} size="sm" className="transition-transform hover:scale-110 shrink-0" />
             <div className="text-xs truncate max-w-[120px]">
               <p className="font-medium text-zinc-200 truncate">{userName}</p>
               <p className="text-[10px] text-emerald-400 flex items-center gap-1 font-mono">
@@ -811,9 +848,11 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                 }`}
               >
                 {/* Avatar */}
-                <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-sm shrink-0 shadow-sm mt-0.5 transition-transform hover:scale-110">
-                  {msg.senderAvatar}
-                </div>
+                <Avatar
+                  src={msg.senderAvatar}
+                  size="sm"
+                  className="mt-0.5 transition-transform hover:scale-110 shadow-sm"
+                />
 
                 {/* Bubble Container */}
                 <div className={`max-w-[85%] sm:max-w-md ${isMe ? "items-end text-right" : "items-start text-left"}`}>
