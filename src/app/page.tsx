@@ -6,16 +6,16 @@ import {
   MessageSquare,
   Sparkles,
   ArrowRight,
-  Compass,
   ShieldCheck,
   Zap,
   Volume2,
   RefreshCw,
   Hash,
   Activity,
-  Layers,
 } from "lucide-react";
 import { generateRoomSlug, AVATAR_OPTIONS } from "@/lib/utils";
+import { SpotlightCard } from "@/components/amicro/SpotlightCard";
+import { TextShimmer } from "@/components/amicro/TextShimmer";
 
 interface PublicRoom {
   id: string;
@@ -95,31 +95,31 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col justify-between selection:bg-zinc-800 relative overflow-hidden">
-      {/* Background Decorative Gradients */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-gradient-to-b from-indigo-500/10 via-zinc-900/5 to-transparent blur-3xl pointer-events-none -z-10" />
+      {/* Background Subtle Radial Lighting */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[360px] bg-gradient-to-b from-indigo-500/10 via-zinc-900/5 to-transparent blur-3xl pointer-events-none -z-10" />
 
       {/* Top Navbar */}
       <header className="border-b border-zinc-800/80 bg-zinc-950/70 backdrop-blur-xl sticky top-0 z-30">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-950 shadow-sm font-bold">
+            <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-950 shadow-sm font-bold transition-transform duration-200 hover:scale-105 active:scale-95 cursor-pointer">
               <MessageSquare className="w-4 h-4 fill-current" />
             </div>
             <div className="flex items-center gap-2">
               <span className="font-semibold text-base tracking-tight text-zinc-100">HavenChat</span>
               <span className="text-[10px] font-mono font-medium uppercase px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700/60">
-                shadcn/ui
+                shadcn × amicro
               </span>
             </div>
           </div>
 
           <div className="flex items-center space-x-3 text-xs">
-            <div className="flex items-center gap-2 bg-zinc-900/80 border border-zinc-800 px-3 py-1.5 rounded-full text-zinc-300">
+            <div className="flex items-center gap-2 bg-zinc-900/80 border border-zinc-800 px-3 py-1.5 rounded-full text-zinc-300 shadow-sm transition-all hover:border-zinc-700">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
               </span>
-              <span className="font-mono text-[11px] text-zinc-400">Vercel Edge Ready</span>
+              <span className="font-mono text-[11px] text-zinc-400">Vercel Ready</span>
             </div>
           </div>
         </div>
@@ -128,28 +128,31 @@ export default function HomePage() {
       {/* Hero Section */}
       <div className="max-w-4xl mx-auto px-6 pt-12 pb-16 flex-1 w-full flex flex-col items-center">
         <div className="text-center max-w-2xl mx-auto mb-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800 bg-zinc-900/80 text-xs font-medium text-zinc-300 mb-5 shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Next-Gen Real-Time Room Engine</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800 bg-zinc-900/80 text-xs font-medium text-zinc-300 mb-5 shadow-sm transition-transform hover:scale-[1.02]">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+            <TextShimmer>Frictionless Real-Time Rooms</TextShimmer>
           </div>
 
           <h1 className="text-4xl sm:text-5xl font-extrabold text-zinc-100 tracking-tight leading-[1.15]">
-            Instant rooms. <span className="bg-gradient-to-r from-zinc-100 via-zinc-400 to-zinc-500 bg-clip-text text-transparent">Zero friction.</span>
+            Instant rooms. <span className="bg-gradient-to-r from-zinc-100 via-indigo-200 to-zinc-400 bg-clip-text text-transparent">Micro-fluid transitions.</span>
           </h1>
           <p className="mt-3.5 text-zinc-400 text-sm sm:text-base leading-relaxed max-w-xl mx-auto">
-            Spin up an isolated chat room in seconds. Share the link, converse in real-time with presence indicators, message replies, and emoji reactions.
+            Spin up an isolated chat room in seconds. Share the link, converse in real-time with kinetic reactions, quoted replies, and amicro physics.
           </p>
         </div>
 
-        {/* Interactive Console Card (shadcn Card standard) */}
-        <div className="w-full max-w-lg bg-zinc-900/70 border border-zinc-800/90 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md">
+        {/* Interactive Console Card (Amicro SpotlightCard) */}
+        <SpotlightCard
+          spotlightColor="rgba(99, 102, 241, 0.15)"
+          className="w-full max-w-lg bg-zinc-900/70 border border-zinc-800/90 rounded-2xl p-6 sm:p-7 shadow-2xl backdrop-blur-md"
+        >
           {/* Persona Picker */}
           <div className="mb-6 pb-6 border-b border-zinc-800/80">
             <label className="block text-xs font-medium uppercase tracking-wider text-zinc-400 mb-2.5">
               Display Profile
             </label>
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-xl shrink-0 shadow-inner">
+              <div className="w-11 h-11 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-xl shrink-0 shadow-inner transition-transform hover:scale-105">
                 {avatar}
               </div>
               <input
@@ -162,7 +165,7 @@ export default function HomePage() {
               />
             </div>
 
-            {/* Quick Avatar Tray */}
+            {/* Quick Avatar Tray with Micro-transitions */}
             <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1">
               <span className="text-[11px] text-zinc-500 mr-1">Avatar:</span>
               {["⚡", "🚀", "🪐", "🔥", "💎", "🦊", "☕", "👾", "🎨", "🛡️"].map((em) => (
@@ -170,10 +173,10 @@ export default function HomePage() {
                   key={em}
                   type="button"
                   onClick={() => setAvatar(em)}
-                  className={`w-7 h-7 rounded-lg text-sm flex items-center justify-center transition-all ${
+                  className={`w-7 h-7 rounded-lg text-sm flex items-center justify-center transition-all duration-150 active:scale-90 ${
                     avatar === em
-                      ? "bg-zinc-800 border border-zinc-600 scale-105"
-                      : "hover:bg-zinc-800/60 text-zinc-400"
+                      ? "bg-zinc-800 border border-zinc-600 scale-110 shadow-sm"
+                      : "hover:bg-zinc-800/60 hover:scale-105 text-zinc-400"
                   }`}
                 >
                   {em}
@@ -182,11 +185,11 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Segmented Control / Tabs (shadcn tabs style) */}
+          {/* Segmented Control / Tabs (shadcn style with micro-motion) */}
           <div className="grid grid-cols-2 bg-zinc-950 p-1 rounded-xl border border-zinc-800/80 mb-6">
             <button
               onClick={() => setActiveTab("create")}
-              className={`py-2 text-xs font-medium rounded-lg transition-all ${
+              className={`py-2 text-xs font-medium rounded-lg transition-all duration-150 active:scale-95 ${
                 activeTab === "create"
                   ? "bg-zinc-800 text-zinc-100 shadow-sm"
                   : "text-zinc-400 hover:text-zinc-200"
@@ -196,7 +199,7 @@ export default function HomePage() {
             </button>
             <button
               onClick={() => setActiveTab("join")}
-              className={`py-2 text-xs font-medium rounded-lg transition-all ${
+              className={`py-2 text-xs font-medium rounded-lg transition-all duration-150 active:scale-95 ${
                 activeTab === "join"
                   ? "bg-zinc-800 text-zinc-100 shadow-sm"
                   : "text-zinc-400 hover:text-zinc-200"
@@ -231,7 +234,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => setRoomSlug(generateRoomSlug())}
-                    className="inline-flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-200 transition-colors"
+                    className="inline-flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-200 transition-all duration-150 active:rotate-180"
                   >
                     <RefreshCw className="w-3 h-3" />
                     <span>Regenerate</span>
@@ -246,7 +249,7 @@ export default function HomePage() {
                     value={roomSlug}
                     onChange={(e) => setRoomSlug(e.target.value)}
                     required
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-r-xl px-3 py-2.5 text-sm font-mono text-zinc-100 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-colors"
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-r-xl px-3.5 py-2.5 text-sm font-mono text-zinc-100 focus:outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 transition-colors"
                   />
                 </div>
               </div>
@@ -254,10 +257,10 @@ export default function HomePage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-2 bg-zinc-100 hover:bg-white text-zinc-950 font-semibold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.99] disabled:opacity-50"
+                className="w-full mt-2 bg-zinc-100 hover:bg-white text-zinc-950 font-semibold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all duration-150 active:scale-[0.97] hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] disabled:opacity-50"
               >
                 <span>{loading ? "Generating Space..." : "Launch Room"}</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </button>
             </form>
           ) : (
@@ -280,7 +283,7 @@ export default function HomePage() {
 
               <button
                 type="submit"
-                className="w-full mt-2 bg-zinc-100 hover:bg-white text-zinc-950 font-semibold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.99]"
+                className="w-full mt-2 bg-zinc-100 hover:bg-white text-zinc-950 font-semibold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all duration-150 active:scale-[0.97]"
               >
                 <span>Join Room</span>
                 <ArrowRight className="w-4 h-4" />
@@ -300,9 +303,9 @@ export default function HomePage() {
                   <button
                     key={r.id}
                     onClick={() => router.push(`/room/${r.id}`)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-300 transition-all hover:bg-zinc-800/40"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 hover:border-zinc-600 text-xs text-zinc-300 transition-all duration-150 hover:scale-105 active:scale-95"
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]"></span>
                     <span className="font-medium text-zinc-200">{r.name}</span>
                     <span className="text-zinc-500 text-[10px]">({r.participantsCount})</span>
                   </button>
@@ -310,48 +313,57 @@ export default function HomePage() {
               </div>
             </div>
           )}
-        </div>
+        </SpotlightCard>
 
-        {/* Feature Cards Grid (shadcn Bento style) */}
+        {/* Feature Cards Grid (Amicro SpotlightCards) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 max-w-3xl mx-auto mt-12 w-full text-left">
-          <div className="p-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40 hover:border-zinc-700 transition-all">
-            <div className="w-8 h-8 rounded-lg bg-zinc-800 text-indigo-400 flex items-center justify-center mb-2.5">
+          <SpotlightCard
+            spotlightColor="rgba(99, 102, 241, 0.12)"
+            className="p-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40 hover:border-zinc-700 transition-all duration-200 hover:-translate-y-0.5"
+          >
+            <div className="w-8 h-8 rounded-lg bg-zinc-800 text-indigo-400 flex items-center justify-center mb-2.5 shadow-sm">
               <Zap className="w-4 h-4" />
             </div>
             <h3 className="font-semibold text-sm text-zinc-100">Zero-Lag Delta Sync</h3>
             <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
               Adaptive long-polling and event streams with automatic visibility backoff.
             </p>
-          </div>
+          </SpotlightCard>
 
-          <div className="p-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40 hover:border-zinc-700 transition-all">
-            <div className="w-8 h-8 rounded-lg bg-zinc-800 text-emerald-400 flex items-center justify-center mb-2.5">
+          <SpotlightCard
+            spotlightColor="rgba(16, 185, 129, 0.12)"
+            className="p-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40 hover:border-zinc-700 transition-all duration-200 hover:-translate-y-0.5"
+          >
+            <div className="w-8 h-8 rounded-lg bg-zinc-800 text-emerald-400 flex items-center justify-center mb-2.5 shadow-sm">
               <Volume2 className="w-4 h-4" />
             </div>
             <h3 className="font-semibold text-sm text-zinc-100">Web Audio FX</h3>
             <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-              Zero-asset synthesized sound chimes on send, receive, and reaction events.
+              Synthesized organic chimes on message send, receive, and reaction events.
             </p>
-          </div>
+          </SpotlightCard>
 
-          <div className="p-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40 hover:border-zinc-700 transition-all">
-            <div className="w-8 h-8 rounded-lg bg-zinc-800 text-amber-400 flex items-center justify-center mb-2.5">
+          <SpotlightCard
+            spotlightColor="rgba(245, 158, 11, 0.12)"
+            className="p-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40 hover:border-zinc-700 transition-all duration-200 hover:-translate-y-0.5"
+          >
+            <div className="w-8 h-8 rounded-lg bg-zinc-800 text-amber-400 flex items-center justify-center mb-2.5 shadow-sm">
               <ShieldCheck className="w-4 h-4" />
             </div>
-            <h3 className="font-semibold text-sm text-zinc-100">Ephemeral Privacy</h3>
+            <h3 className="font-semibold text-sm text-zinc-100">Amicro Micro-Physics</h3>
             <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-              No tracking, no cookies, no databases storing your personal identity.
+              Spring-physics pop animations, dynamic island capsules, and tactile feedback.
             </p>
-          </div>
+          </SpotlightCard>
         </div>
       </div>
 
       {/* Footer */}
       <footer className="border-t border-zinc-800/80 py-5 text-center text-xs text-zinc-500 bg-zinc-950">
         <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-2.5">
-          <p>© 2026 HavenChat • Built with shadcn/ui & Next.js 15 App Router</p>
+          <p>© 2026 HavenChat • Engineered with shadcn/ui × Amicro Motion</p>
           <p className="font-mono text-[11px] text-zinc-500">
-            Engineered by Antigravity × Hermes × OpenCode × OpenClaw × OMP
+            Powered by Antigravity × Hermes × OpenCode × OpenClaw × OMP
           </p>
         </div>
       </footer>

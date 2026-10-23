@@ -16,12 +16,11 @@ import {
   X,
   Sparkles,
   Hash,
-  Activity,
-  Circle,
 } from "lucide-react";
 import { Message, Participant, ReplyContext } from "@/types/chat";
 import { formatTimestamp, AVATAR_OPTIONS } from "@/lib/utils";
 import { sound } from "@/lib/sound";
+import { DynamicIsland } from "@/components/amicro/DynamicIsland";
 
 const POPULAR_REACTIONS = ["❤️", "👍", "🔥", "😂", "👏", "🚀"];
 
@@ -63,7 +62,6 @@ export default function RoomChatPage({ params }: RoomPageProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Initialize identity
   useEffect(() => {
     let uid = localStorage.getItem("havenchat_user_id");
     if (!uid) {
@@ -290,7 +288,18 @@ export default function RoomChatPage({ params }: RoomPageProps) {
   };
 
   return (
-    <div className="flex h-screen bg-zinc-950 text-zinc-100 overflow-hidden selection:bg-zinc-800">
+    <div className="flex h-screen bg-zinc-950 text-zinc-100 overflow-hidden selection:bg-zinc-800 relative">
+      {/* Amicro Top Dynamic Island Component */}
+      <DynamicIsland
+        roomName={roomName}
+        roomId={roomId}
+        memberCount={participants.length}
+        soundEnabled={soundEnabled}
+        onToggleSound={toggleSound}
+        onCopyLink={handleCopyLink}
+        copied={copied}
+      />
+
       {/* Left Sidebar (Desktop shadcn panel) */}
       <aside className="w-72 border-r border-zinc-800 bg-zinc-900/60 flex flex-col justify-between hidden md:flex shrink-0 backdrop-blur-md">
         <div>
@@ -298,7 +307,7 @@ export default function RoomChatPage({ params }: RoomPageProps) {
           <div className="p-4 border-b border-zinc-800">
             <Link
               href="/"
-              className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors mb-3"
+              className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-all duration-150 active:scale-95 mb-3"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>All Rooms</span>
@@ -313,9 +322,9 @@ export default function RoomChatPage({ params }: RoomPageProps) {
               </span>
               <button
                 onClick={handleCopyLink}
-                className="inline-flex items-center gap-1 text-xs text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700/80 px-2.5 py-1 rounded-md transition-colors"
+                className="inline-flex items-center gap-1 text-xs text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700/80 px-2.5 py-1 rounded-md transition-all duration-150 active:scale-95"
               >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400 animate-amicro-pop" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copied ? "Copied" : "Invite"}</span>
               </button>
             </div>
@@ -339,14 +348,14 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                 return (
                   <div
                     key={p.id}
-                    className={`flex items-center justify-between p-2 rounded-lg transition-colors ${
-                      isMe ? "bg-zinc-800/80 text-zinc-100" : "hover:bg-zinc-850 text-zinc-300 hover:text-zinc-100"
+                    className={`flex items-center justify-between p-2 rounded-lg transition-all duration-150 ${
+                      isMe ? "bg-zinc-800/80 text-zinc-100 shadow-sm" : "hover:bg-zinc-800/50 text-zinc-300 hover:text-zinc-100"
                     }`}
                   >
                     <div className="flex items-center gap-2.5 truncate">
                       <div className="relative">
-                        <span className="text-base">{p.avatar}</span>
-                        <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-zinc-900"></span>
+                        <span className="text-base transition-transform hover:scale-110 cursor-default">{p.avatar}</span>
+                        <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-zinc-900 shadow-[0_0_6px_rgba(16,185,129,0.8)]"></span>
                       </div>
                       <div className="truncate">
                         <p className="text-xs font-medium truncate flex items-center gap-1.5">
@@ -374,18 +383,18 @@ export default function RoomChatPage({ params }: RoomPageProps) {
         {/* Sidebar Footer Controls */}
         <div className="p-3.5 border-t border-zinc-800 bg-zinc-950/80 flex items-center justify-between">
           <div className="flex items-center gap-2.5 truncate">
-            <span className="text-lg">{userAvatar}</span>
+            <span className="text-lg transition-transform hover:scale-110">{userAvatar}</span>
             <div className="text-xs truncate max-w-[120px]">
               <p className="font-medium text-zinc-200 truncate">{userName}</p>
               <p className="text-[10px] text-emerald-400 flex items-center gap-1 font-mono">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)]"></span> Online
               </p>
             </div>
           </div>
           <button
             onClick={toggleSound}
             title={soundEnabled ? "Mute audio" : "Enable audio"}
-            className="p-1.5 rounded-md text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+            className="p-1.5 rounded-md text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-all duration-150 active:scale-90"
           >
             {soundEnabled ? <Volume2 className="w-4 h-4 text-zinc-300" /> : <VolumeX className="w-4 h-4" />}
           </button>
@@ -393,11 +402,11 @@ export default function RoomChatPage({ params }: RoomPageProps) {
       </aside>
 
       {/* Main Chat Workspace */}
-      <div className="flex-1 flex flex-col h-full bg-zinc-950 relative">
+      <div className="flex-1 flex flex-col h-full bg-zinc-950 relative pt-12 md:pt-0">
         {/* Mobile Navbar Header */}
         <header className="h-14 border-b border-zinc-800 bg-zinc-900/80 flex items-center justify-between px-4 md:hidden shrink-0 backdrop-blur-md">
           <div className="flex items-center gap-2.5">
-            <Link href="/" className="text-zinc-400 hover:text-zinc-100">
+            <Link href="/" className="text-zinc-400 hover:text-zinc-100 transition-colors">
               <ArrowLeft className="w-4 h-4" />
             </Link>
             <div>
@@ -413,13 +422,13 @@ export default function RoomChatPage({ params }: RoomPageProps) {
           <div className="flex items-center gap-2">
             <button
               onClick={handleCopyLink}
-              className="p-1.5 text-xs bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-200"
+              className="p-1.5 text-xs bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-200 transition-transform active:scale-95"
             >
               {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
             </button>
             <button
               onClick={toggleSound}
-              className="p-1.5 text-xs bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-400"
+              className="p-1.5 text-xs bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-400 transition-transform active:scale-95"
             >
               {soundEnabled ? <Volume2 className="w-4 h-4 text-zinc-200" /> : <VolumeX className="w-4 h-4" />}
             </button>
@@ -430,7 +439,7 @@ export default function RoomChatPage({ params }: RoomPageProps) {
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
           {/* Welcome Card Banner */}
           <div className="border border-zinc-800 bg-zinc-900/40 rounded-2xl p-5 max-w-md mx-auto text-center shadow-sm">
-            <div className="w-9 h-9 rounded-xl bg-zinc-800 text-zinc-200 flex items-center justify-center mx-auto mb-2.5">
+            <div className="w-9 h-9 rounded-xl bg-zinc-800 text-zinc-200 flex items-center justify-center mx-auto mb-2.5 shadow-sm">
               <Sparkles className="w-4 h-4 text-indigo-400" />
             </div>
             <h3 className="font-semibold text-sm text-zinc-100">{roomName}</h3>
@@ -440,14 +449,14 @@ export default function RoomChatPage({ params }: RoomPageProps) {
             </p>
           </div>
 
-          {/* Messages Stream */}
+          {/* Messages Stream with Amicro Entrance Animation */}
           {messages.map((msg) => {
             const isMe = msg.senderId === userId;
 
             if (msg.isSystem) {
               return (
-                <div key={msg.id} className="flex justify-center my-2">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900/70 border border-zinc-800 text-xs text-zinc-400 font-mono">
+                <div key={msg.id} className="flex justify-center my-2 animate-amicro-message">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900/70 border border-zinc-800 text-xs text-zinc-400 font-mono shadow-sm">
                     <span>{msg.senderAvatar}</span>
                     <span>{msg.content}</span>
                   </div>
@@ -458,12 +467,12 @@ export default function RoomChatPage({ params }: RoomPageProps) {
             return (
               <div
                 key={msg.id}
-                className={`group flex items-start gap-2.5 ${
+                className={`group flex items-start gap-2.5 animate-amicro-message ${
                   isMe ? "flex-row-reverse" : "flex-row"
                 }`}
               >
                 {/* Avatar */}
-                <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-sm shrink-0 shadow-sm mt-0.5">
+                <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-sm shrink-0 shadow-sm mt-0.5 transition-transform hover:scale-110">
                   {msg.senderAvatar}
                 </div>
 
@@ -479,7 +488,7 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                   {/* Quoted Reply */}
                   {msg.replyTo && (
                     <div
-                      className={`text-xs p-2 rounded-lg mb-1 border-l-2 bg-zinc-900 border-zinc-500 text-zinc-400 ${
+                      className={`text-xs p-2 rounded-lg mb-1 border-l-2 bg-zinc-900/90 border-zinc-500 text-zinc-400 shadow-sm ${
                         isMe ? "text-right" : "text-left"
                       }`}
                     >
@@ -490,27 +499,27 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                     </div>
                   )}
 
-                  {/* Message Bubble (shadcn standard) */}
+                  {/* Message Bubble (Amicro Spring Tactile) */}
                   <div
-                    className={`relative px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm transition-colors ${
+                    className={`relative px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm transition-all duration-150 ${
                       isMe
-                        ? "bg-zinc-100 text-zinc-950 rounded-tr-sm font-normal"
-                        : "bg-zinc-900 text-zinc-100 border border-zinc-800 rounded-tl-sm"
+                        ? "bg-zinc-100 text-zinc-950 rounded-tr-sm font-normal shadow-[0_2px_10px_rgba(255,255,255,0.06)]"
+                        : "bg-zinc-900 text-zinc-100 border border-zinc-800 rounded-tl-sm hover:border-zinc-700"
                     }`}
                   >
                     <p className="whitespace-pre-wrap break-words">{msg.content}</p>
 
-                    {/* Floating Hover Actions (shadcn tooltip style) */}
+                    {/* Floating Hover Actions (Amicro Spring Pill) */}
                     <div
                       className={`absolute -top-3.5 ${
                         isMe ? "left-2" : "right-2"
-                      } hidden group-hover:flex items-center gap-1 bg-zinc-900 border border-zinc-700/80 px-2 py-0.5 rounded-full shadow-xl z-10`}
+                      } hidden group-hover:flex items-center gap-1 bg-zinc-900 border border-zinc-700/80 px-2 py-0.5 rounded-full shadow-xl z-10 animate-amicro-pop`}
                     >
                       {POPULAR_REACTIONS.slice(0, 3).map((em) => (
                         <button
                           key={em}
                           onClick={() => handleToggleReaction(msg.id, em)}
-                          className="hover:scale-125 text-xs transition-transform px-0.5"
+                          className="hover:scale-130 active:scale-90 text-xs transition-transform px-0.5"
                         >
                           {em}
                         </button>
@@ -519,7 +528,7 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                         onClick={() =>
                           setShowEmojiPicker(showEmojiPicker === msg.id ? null : msg.id)
                         }
-                        className="text-zinc-400 hover:text-zinc-200 text-xs px-1"
+                        className="text-zinc-400 hover:text-zinc-200 active:scale-90 transition-transform text-xs px-1"
                         title="More emojis"
                       >
                         <Smile className="w-3 h-3" />
@@ -532,7 +541,7 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                             content: msg.content,
                           })
                         }
-                        className="text-zinc-400 hover:text-zinc-200 text-xs px-1"
+                        className="text-zinc-400 hover:text-zinc-200 active:scale-90 transition-transform text-xs px-1"
                         title="Reply"
                       >
                         <CornerDownRight className="w-3 h-3" />
@@ -544,13 +553,13 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                       <div
                         className={`absolute top-full mt-2 ${
                           isMe ? "left-0" : "right-0"
-                        } bg-zinc-900 border border-zinc-700 p-2 rounded-xl shadow-2xl flex gap-1.5 z-20`}
+                        } bg-zinc-900 border border-zinc-700 p-2 rounded-xl shadow-2xl flex gap-1.5 z-20 animate-amicro-pop`}
                       >
                         {POPULAR_REACTIONS.map((em) => (
                           <button
                             key={em}
                             onClick={() => handleToggleReaction(msg.id, em)}
-                            className="text-base hover:scale-125 transition-transform p-1 rounded hover:bg-zinc-800"
+                            className="text-base hover:scale-125 active:scale-90 transition-transform p-1 rounded hover:bg-zinc-800"
                           >
                             {em}
                           </button>
@@ -559,7 +568,7 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                     )}
                   </div>
 
-                  {/* Reaction Badges */}
+                  {/* Reaction Badges with Pop Animation */}
                   {Object.keys(msg.reactions).length > 0 && (
                     <div className={`flex flex-wrap gap-1 mt-1.5 ${isMe ? "justify-end" : "justify-start"}`}>
                       {Object.entries(msg.reactions).map(([emoji, uids]) => {
@@ -568,9 +577,9 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                           <button
                             key={emoji}
                             onClick={() => handleToggleReaction(msg.id, emoji)}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs transition-colors ${
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs transition-all duration-150 hover:scale-105 active:scale-90 ${
                               userReacted
-                                ? "bg-zinc-800 border border-zinc-600 text-zinc-100 font-semibold"
+                                ? "bg-zinc-800 border border-zinc-500 text-zinc-100 font-semibold shadow-sm animate-amicro-pop"
                                 : "bg-zinc-900 border border-zinc-800 text-zinc-400 hover:border-zinc-700"
                             }`}
                           >
@@ -589,13 +598,13 @@ export default function RoomChatPage({ params }: RoomPageProps) {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Typing Notification */}
+        {/* Typing Notification with Wave Animation */}
         {typingUsers.length > 0 && (
-          <div className="px-6 py-1 text-xs text-zinc-400 italic flex items-center gap-2 bg-zinc-950">
+          <div className="px-6 py-1.5 text-xs text-zinc-400 italic flex items-center gap-2 bg-zinc-950">
             <span className="flex gap-1 items-center">
-              <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce"></span>
-              <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-              <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+              <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-amicro-wave [animation-delay:-0.3s]"></span>
+              <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-amicro-wave [animation-delay:-0.15s]"></span>
+              <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-amicro-wave"></span>
             </span>
             <span>{typingUsers.join(", ")} {typingUsers.length === 1 ? "is" : "are"} typing...</span>
           </div>
@@ -603,9 +612,9 @@ export default function RoomChatPage({ params }: RoomPageProps) {
 
         {/* Active Reply Banner */}
         {replyTarget && (
-          <div className="mx-4 sm:mx-6 mb-2 p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-between shadow-sm">
+          <div className="mx-4 sm:mx-6 mb-2 p-2.5 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-between shadow-lg animate-amicro-pop">
             <div className="flex items-center gap-2 text-xs truncate">
-              <CornerDownRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+              <CornerDownRight className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
               <div className="truncate">
                 <span className="font-medium text-zinc-200">Replying to {replyTarget.senderName}: </span>
                 <span className="text-zinc-400">{replyTarget.content}</span>
@@ -613,17 +622,17 @@ export default function RoomChatPage({ params }: RoomPageProps) {
             </div>
             <button
               onClick={() => setReplyTarget(null)}
-              className="text-zinc-400 hover:text-zinc-100 p-1"
+              className="text-zinc-400 hover:text-zinc-100 p-1 transition-transform active:scale-90"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
 
-        {/* Input Box Dock (shadcn input dock) */}
+        {/* Input Box Dock (Amicro Tactile Dock) */}
         <div className="p-4 sm:p-5 bg-zinc-950 border-t border-zinc-800/90 shrink-0">
           <form onSubmit={handleSendMessage} className="flex items-end gap-2">
-            <div className="flex-1 bg-zinc-900/90 border border-zinc-800 focus-within:border-zinc-600 rounded-2xl p-2.5 transition-colors flex flex-col">
+            <div className="flex-1 bg-zinc-900/90 border border-zinc-800 focus-within:border-zinc-600 rounded-2xl p-2.5 transition-all duration-200 flex flex-col shadow-inner">
               <textarea
                 value={inputText}
                 onChange={handleInputChange}
@@ -644,14 +653,14 @@ export default function RoomChatPage({ params }: RoomPageProps) {
                       key={em}
                       type="button"
                       onClick={() => setInputText((prev) => prev + em)}
-                      className="text-xs hover:scale-125 transition-transform px-1 py-0.5 rounded text-zinc-400 hover:text-zinc-200"
+                      className="text-xs hover:scale-130 active:scale-90 transition-transform px-1 py-0.5 rounded text-zinc-400 hover:text-zinc-200"
                     >
                       {em}
                     </button>
                   ))}
                 </div>
                 <span className="text-[10px] text-zinc-500 font-mono pr-1">
-                  markdown ready
+                  amicro ready
                 </span>
               </div>
             </div>
@@ -659,7 +668,7 @@ export default function RoomChatPage({ params }: RoomPageProps) {
             <button
               type="submit"
               disabled={!inputText.trim()}
-              className="h-11 w-11 rounded-xl bg-zinc-100 hover:bg-white text-zinc-950 flex items-center justify-center shrink-0 shadow-sm transition-all active:scale-[0.98] disabled:opacity-40"
+              className="h-11 w-11 rounded-xl bg-zinc-100 hover:bg-white text-zinc-950 flex items-center justify-center shrink-0 shadow-sm transition-all duration-150 active:scale-[0.94] hover:shadow-[0_0_15px_rgba(255,255,255,0.25)] disabled:opacity-40"
             >
               <Send className="w-4 h-4" />
             </button>
