@@ -27,6 +27,8 @@ import { Message, Participant, ReplyContext, Attachment } from "@/types/chat";
 import { formatTimestamp, formatBytes, AVATAR_OPTIONS } from "@/lib/utils";
 import { sound } from "@/lib/sound";
 import { DynamicIsland } from "@/components/amicro/DynamicIsland";
+import { useAuth } from "@/context/AuthContext";
+import { AuthCard } from "@/components/auth/AuthCard";
 
 const POPULAR_REACTIONS = ["❤️", "👍", "🔥", "😂", "👏", "🚀"];
 
@@ -37,6 +39,7 @@ interface RoomPageProps {
 export default function RoomChatPage({ params }: RoomPageProps) {
   const router = useRouter();
   const { roomId } = use(params);
+  const { user, isLoading: authLoading } = useAuth();
 
   // User State
   const [userId, setUserId] = useState<string>("");
@@ -82,20 +85,21 @@ export default function RoomChatPage({ params }: RoomPageProps) {
   };
 
   useEffect(() => {
-    let uid = localStorage.getItem("ayeraachat_user_id") || localStorage.getItem("havenchat_user_id");
-    if (!uid) {
-      uid = `u-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      localStorage.setItem("ayeraachat_user_id", uid);
-      localStorage.setItem("havenchat_user_id", uid);
+    if (authLoading) return;
+    if (!user) {
+      setHasJoined(false);
+      return;
     }
-    setUserId(uid);
 
-    const savedName = localStorage.getItem("ayeraachat_user_name") || localStorage.getItem("havenchat_user_name") || "Anonymous Explorer";
-    const savedAvatar = localStorage.getItem("ayeraachat_user_avatar") || localStorage.getItem("havenchat_user_avatar") || "⚡";
-    setUserName(savedName);
-    setUserAvatar(savedAvatar);
-    userNameRef.current = savedName;
-    userAvatarRef.current = savedAvatar;
+    const uid = user.id;
+    const finalName = user.name;
+    const finalAvatar = user.avatar;
+
+    setUserId(uid);
+    setUserName(finalName);
+    setUserAvatar(finalAvatar);
+    userNameRef.current = finalName;
+    userAvatarRef.current = finalAvatar;
     setSoundEnabled(sound.isEnabled());
 
     fetch(`/api/rooms/${roomId}/join`, {
@@ -103,8 +107,8 @@ export default function RoomChatPage({ params }: RoomPageProps) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id: uid,
-        name: savedName,
-        avatar: savedAvatar,
+        name: finalName,
+        avatar: finalAvatar,
       }),
     })
       .then((res) => res.json())
@@ -120,8 +124,8 @@ export default function RoomChatPage({ params }: RoomPageProps) {
             if (!map.has(uid)) {
               map.set(uid, {
                 id: uid,
-                name: savedName,
-                avatar: savedAvatar,
+                name: finalName,
+                avatar: finalAvatar,
                 joinedAt: Date.now(),
                 lastActiveAt: Date.now(),
                 isTyping: false,
@@ -134,7 +138,7 @@ export default function RoomChatPage({ params }: RoomPageProps) {
         }
       })
       .catch(() => setHasJoined(true));
-  }, [roomId]);
+  }, [roomId, user, authLoading]);
 
   // Delta Polling Loop with Visibility Optimization & State Merging
   useEffect(() => {
@@ -541,6 +545,58 @@ export default function RoomChatPage({ params }: RoomPageProps) {
   };
 
   const onlineCount = Math.max(1, participants.filter((p) => p.isOnline !== false).length);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center gap-3">
+        <div className="w-10 h-10 border-2 border-zinc-700 border-t-zinc-200 rounded-full animate-spin" />
+        <p className="text-xs text-zinc-400 font-mono">Memeriksa autentikasi...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <main className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col justify-between selection:bg-zinc-800 relative overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[360px] bg-gradient-to-b from-indigo-500/10 via-zinc-900/5 to-transparent blur-3xl pointer-events-none -z-10" />
+
+        <header className="border-b border-zinc-800/80 bg-zinc-950/70 backdrop-blur-xl sticky top-0 z-30">
+          <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+            <Link
+              href="/"
+              className="flex items-center space-x-3 text-zinc-300 hover:text-white transition-colors"
+            >
+              <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-100 shadow-sm">
+                <ArrowLeft className="w-4 h-4" />
+              </div>
+              <span className="font-semibold text-sm tracking-tight">Kembali ke Beranda</span>
+            </Link>
+            <div className="font-mono text-xs text-zinc-400 bg-zinc-900 px-2.5 py-1 rounded-full border border-zinc-800">
+              #{roomId}
+            </div>
+          </div>
+        </header>
+
+        <div className="max-w-md mx-auto px-4 py-12 flex-1 flex flex-col items-center justify-center w-full">
+          <div className="text-center mb-6">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-amber-400 px-3 py-1 rounded-full bg-amber-950/40 border border-amber-800/50 inline-block mb-3">
+              Room #{roomId}
+            </span>
+            <h1 className="text-2xl font-bold text-zinc-100">Login Wajib Diperlukan</h1>
+            <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
+              Silakan masuk atau daftar akun Ayeraa untuk bergabung ke obrolan room ini.
+            </p>
+          </div>
+
+          <AuthCard />
+        </div>
+
+        <footer className="border-t border-zinc-800/80 py-4 text-center text-xs text-zinc-500 bg-zinc-950">
+          Ayeraa Chat • Ruang Obrolan Terenkripsi
+        </footer>
+      </main>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-100 overflow-hidden selection:bg-zinc-800 relative">
