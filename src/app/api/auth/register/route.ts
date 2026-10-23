@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { registerUser } from "@/lib/authStore";
+import { registerUser, verifySessionToken } from "@/lib/authStore";
 
 export async function POST(req: NextRequest) {
   try {
+    const authHeader = req.headers.get("authorization");
+    const cookieToken = req.cookies.get("ayeraa_token")?.value;
+    const existingToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : cookieToken;
+    if (existingToken) {
+      verifySessionToken(existingToken);
+    }
+
     const body = await req.json();
     const { username, password, name, avatar, bio } = body;
 

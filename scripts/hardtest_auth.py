@@ -82,6 +82,7 @@ def run_tests():
         f"{BASE_URL}/api/auth/register",
         method="POST",
         data={"username": test_username, "password": test_password},
+        cookies={"ayeraa_token": token},
     )
     assert status == 400, f"Expected 400 Bad Request, got {status}: {res}"
     assert res.get("success") is False
