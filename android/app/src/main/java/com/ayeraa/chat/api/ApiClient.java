@@ -282,4 +282,17 @@ public class ApiClient {
             }
         });
     }
+
+    // 12. Check App Update (OTA In-App Auto Updater)
+    public static void checkAppUpdate(Callback<JSONObject> callback) {
+        executor.execute(() -> {
+            try {
+                String res = request("/api/app-update", "GET", null, null);
+                JSONObject obj = new JSONObject(res);
+                mainHandler.post(() -> callback.onSuccess(obj));
+            } catch (Exception e) {
+                mainHandler.post(() -> callback.onError(e.getMessage()));
+            }
+        });
+    }
 }

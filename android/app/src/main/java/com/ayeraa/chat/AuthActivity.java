@@ -18,6 +18,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.ayeraa.chat.api.ApiClient;
+import com.ayeraa.chat.updater.AppUpdater;
 
 import org.json.JSONObject;
 
@@ -48,6 +49,9 @@ public class AuthActivity extends Activity {
             finish();
             return;
         }
+
+        // Check for in-app OTA updates
+        AppUpdater.check(this, false);
 
         // Build Native UI Programmatically (No WebView, 100% Native Android Views)
         ScrollView scrollView = new ScrollView(this);

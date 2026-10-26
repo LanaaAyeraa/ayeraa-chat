@@ -31,6 +31,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.ayeraa.chat.api.ApiClient;
+import com.ayeraa.chat.updater.AppUpdater;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -162,6 +163,9 @@ public class MainActivity extends Activity {
 
         // Switch to default Tab (Pesan)
         switchTab(0);
+
+        // Check for in-app OTA updates
+        AppUpdater.check(this, false);
     }
 
     private void initNotificationChannel() {
@@ -384,6 +388,18 @@ public class MainActivity extends Activity {
 
         content.addView(infoCard, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        // In-App Update Button
+        Button btnCheckUpdate = new Button(this);
+        btnCheckUpdate.setText("🔄 Periksa Pembaruan (Auto-Update)");
+        btnCheckUpdate.setTextColor(Color.WHITE);
+        btnCheckUpdate.setBackgroundColor(Color.parseColor("#6366f1"));
+        btnCheckUpdate.setTextSize(14);
+        LinearLayout.LayoutParams updateParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        updateParams.setMargins(0, 32, 0, 0);
+        btnCheckUpdate.setOnClickListener(v -> AppUpdater.check(MainActivity.this, true));
+        content.addView(btnCheckUpdate, updateParams);
 
         // Logout Button
         Button btnLogout = new Button(this);
