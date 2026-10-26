@@ -295,4 +295,24 @@ public class ApiClient {
             }
         });
     }
+
+    // 13. Login as Guest (Akun Tamu)
+    public static void loginGuest(String name, String avatar, Callback<JSONObject> callback) {
+        executor.execute(() -> {
+            try {
+                JSONObject body = new JSONObject();
+                if (name != null && !name.trim().isEmpty()) {
+                    body.put("name", name.trim());
+                }
+                if (avatar != null && !avatar.trim().isEmpty()) {
+                    body.put("avatar", avatar.trim());
+                }
+                String res = request("/api/auth/guest", "POST", body, null);
+                JSONObject obj = new JSONObject(res);
+                mainHandler.post(() -> callback.onSuccess(obj));
+            } catch (Exception e) {
+                mainHandler.post(() -> callback.onError(e.getMessage()));
+            }
+        });
+    }
 }

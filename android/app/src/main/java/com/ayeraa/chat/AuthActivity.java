@@ -180,6 +180,25 @@ public class AuthActivity extends Activity {
         btnSubmit.setPadding(0, 24, 0, 24);
         card.addView(btnSubmit);
 
+        // Divider
+        TextView tvDivider = new TextView(this);
+        tvDivider.setText("── atau ──");
+        tvDivider.setTextColor(Color.parseColor("#71717a"));
+        tvDivider.setTextSize(11);
+        tvDivider.setGravity(Gravity.CENTER);
+        tvDivider.setPadding(0, 16, 0, 16);
+        card.addView(tvDivider);
+
+        // Guest Mode Button (Tanpa Password / Akun Tamu)
+        Button btnGuest = new Button(this);
+        btnGuest.setText("👤 Masuk sebagai Tamu (Guest Mode)");
+        btnGuest.setTextColor(Color.parseColor("#fafafa"));
+        btnGuest.setBackgroundColor(Color.parseColor("#27272a"));
+        btnGuest.setTextSize(13);
+        btnGuest.setPadding(0, 20, 0, 20);
+        btnGuest.setOnClickListener(v -> handleGuestLogin());
+        card.addView(btnGuest);
+
         // Tab Toggle Handlers
         tabLogin.setOnClickListener(v -> setMode(true));
         tabRegister.setOnClickListener(v -> setMode(false));
@@ -270,6 +289,26 @@ public class AuthActivity extends Activity {
                 }
             });
         }
+    }
+
+    private void handleGuestLogin() {
+        setLoading(true);
+        tvError.setVisibility(View.GONE);
+
+        String customName = etName.getText().toString().trim();
+        ApiClient.loginGuest(customName.isEmpty() ? null : customName, selectedAvatar, new ApiClient.Callback<JSONObject>() {
+            @Override
+            public void onSuccess(JSONObject res) {
+                setLoading(false);
+                handleAuthSuccess(res);
+            }
+
+            @Override
+            public void onError(String error) {
+                setLoading(false);
+                showError("Gagal masuk sebagai tamu: " + error);
+            }
+        });
     }
 
     private void handleAuthSuccess(JSONObject res) {

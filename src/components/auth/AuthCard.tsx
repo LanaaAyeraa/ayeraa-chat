@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 export function AuthCard({ onSuccess }: { onSuccess?: () => void }) {
-  const { login, register } = useAuth();
+  const { login, register, loginAsGuest } = useAuth();
 
   const [mode, setMode] = useState<"login" | "register">("login");
   const [username, setUsername] = useState("");
@@ -237,6 +237,37 @@ export function AuthCard({ onSuccess }: { onSuccess?: () => void }) {
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
+          </button>
+
+          {/* Guest Login Option */}
+          <div className="relative my-3 text-center">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-zinc-800" />
+            </div>
+            <span className="relative bg-zinc-950 px-2 text-[11px] uppercase tracking-wider text-zinc-500 font-mono">
+              atau
+            </span>
+          </div>
+
+          <button
+            type="button"
+            disabled={loading}
+            onClick={async () => {
+              setLoading(true);
+              setError(null);
+              const res = await loginAsGuest();
+              setLoading(false);
+              if (res.success) {
+                setSuccessMsg("Masuk sebagai Tamu! Mengalihkan...");
+                onSuccess?.();
+              } else {
+                setError(res.error || "Gagal masuk sebagai tamu.");
+              }
+            }}
+            className="w-full py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white font-medium text-xs transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
+          >
+            <UserIcon className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Masuk Cepat sebagai Tamu (Guest)</span>
           </button>
         </form>
       )}

@@ -15,6 +15,10 @@ interface AuthContextType {
     avatar?: string,
     bio?: string
   ) => Promise<{ success: boolean; error?: string }>;
+  loginAsGuest: (
+    name?: string,
+    avatar?: string
+  ) => Promise<{ success: boolean; error?: string }>;
   loginWithGoogle: (payload: {
     credential?: string;
     profile?: { email: string; name: string; picture?: string; sub?: string };
@@ -141,6 +145,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const loginAsGuest = async (name?: string, avatar?: string) => {
+    try {
+      const res = await fetch("/api/auth/guest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, avatar }),
+      });
+      const data: AuthResponse = await res.json();
+      if (data.success && data.token && data.user) {
+        handleAuthSuccess(data.token, data.user, data.credentialToken);
+        return { success: true };
+      }
+      return { success: false, error: data.error || "Gagal masuk sebagai tamu." };
+    } catch {
+      return { success: false, error: "Gagal terhubung ke server autentikasi tamu." };
+    }
+  };
+
   const loginWithGoogle = async (payload: {
     credential?: string;
     profile?: { email: string; name: string; picture?: string; sub?: string };
@@ -217,6 +239,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         login,
         register,
+        loginAsGuest,
         loginWithGoogle,
         updateProfile,
         logout,

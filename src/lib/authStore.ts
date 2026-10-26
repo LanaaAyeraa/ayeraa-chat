@@ -643,3 +643,46 @@ export function handleGoogleAuth(profile: {
     user: publicUser,
   };
 }
+
+// Handle Guest Authentication (No password required)
+export async function loginGuest(nameInput?: string, avatarInput?: string): Promise<AuthResponse> {
+  const users = getUsersMap();
+  const usernames = getUsernamesMap();
+
+  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+  let guestUsername = `tamu_${randomSuffix}`;
+  let counter = 1;
+  while (usernames.has(guestUsername)) {
+    guestUsername = `tamu_${randomSuffix}_${counter++}`;
+  }
+
+  const guestId = `guest_${randomSuffix}_${Date.now().toString(36)}`;
+  const guestName = nameInput?.trim() || `Tamu #${randomSuffix}`;
+  const guestAvatar = avatarInput?.trim() || "👤";
+
+  const guestUser: StoredUser = {
+    id: guestId,
+    username: guestUsername,
+    name: guestName,
+    avatar: guestAvatar,
+    bio: "Pengguna Tamu (Guest Mode)",
+    provider: "guest",
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  users.set(guestId, guestUser);
+  usernames.set(guestUsername, guestId);
+
+  // Persist guest record asynchronously so other containers find the user
+  persistUsersToStorage().catch(() => {});
+
+  const publicUser = toPublicUser(guestUser);
+  const token = createSessionToken(publicUser);
+
+  return {
+    success: true,
+    token,
+    user: publicUser,
+  };
+}

@@ -4,7 +4,7 @@ export interface User {
   name: string;
   avatar: string;
   bio?: string;
-  provider: "local" | "google";
+  provider: "local" | "google" | "guest";
   createdAt: number;
   updatedAt?: number;
 }
@@ -19,7 +19,7 @@ export interface SessionTokenPayload {
   username: string;
   name: string;
   avatar: string;
-  provider: "local" | "google";
+  provider: "local" | "google" | "guest";
   iat: number;
   exp: number;
 }
