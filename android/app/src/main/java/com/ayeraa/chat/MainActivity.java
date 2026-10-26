@@ -217,9 +217,9 @@ public class MainActivity extends Activity {
 
         lvConversations.setOnItemClickListener((parent, view, position, id) -> {
             JSONObject conv = conversationList.get(position);
-            String roomId = conv.optString("id");
+            String roomId = conv.optString("roomId", conv.optString("id"));
             JSONObject peer = conv.optJSONObject("peer");
-            String peerName = peer != null ? peer.optString("name", "Obrolan") : "Obrolan";
+            String peerName = peer != null ? peer.optString("name", conv.optString("peerName", "Obrolan")) : conv.optString("peerName", "Obrolan");
 
             Intent intent = new Intent(this, RoomActivity.class);
             intent.putExtra("room_id", roomId);
@@ -704,11 +704,11 @@ public class MainActivity extends Activity {
 
             JSONObject conv = conversationList.get(pos);
             JSONObject peer = conv.optJSONObject("peer");
-            String peerName = peer != null ? peer.optString("name", "Pengguna") : "Pengguna";
-            String peerAvatar = peer != null ? peer.optString("avatar", "⚡") : "⚡";
-            boolean isOnline = peer != null && peer.optBoolean("is_online", false);
-            String lastMsg = conv.optString("last_message", "Belum ada pesan");
-            int unread = conv.optInt("unread_count", 0);
+            String peerName = peer != null ? peer.optString("name", conv.optString("peerName", "Pengguna")) : conv.optString("peerName", "Pengguna");
+            String peerAvatar = peer != null ? peer.optString("avatar", conv.optString("peerAvatar", "⚡")) : conv.optString("peerAvatar", "⚡");
+            boolean isOnline = peer != null ? peer.optBoolean("is_online", conv.optBoolean("peerIsOnline", false)) : conv.optBoolean("peerIsOnline", false);
+            String lastMsg = conv.optString("lastMessageSnippet", conv.optString("last_message", "Belum ada pesan"));
+            int unread = conv.optInt("unreadCount", conv.optInt("unread_count", 0));
 
             // Avatar Container with Online Indicator
             FrameLayout avatarFrame = new FrameLayout(MainActivity.this);

@@ -57,6 +57,19 @@ function mergeRoomMessages(room: Room, incomingMessages: Message[]): void {
     .slice(-MAX_MESSAGES_PER_ROOM);
 }
 
+function mergeRoomParticipants(room: Room, incoming?: Record<string, Participant>): void {
+  if (!incoming || typeof incoming !== "object") return;
+  const now = Date.now();
+  for (const [id, p] of Object.entries(incoming)) {
+    if (!p || typeof p !== "object") continue;
+    if (now - (p.lastActiveAt || 0) > PARTICIPANT_EVICTION_TIMEOUT_MS) continue;
+    const existing = room.participants[id];
+    if (!existing || (p.lastActiveAt || 0) > (existing.lastActiveAt || 0)) {
+      room.participants[id] = { ...p };
+    }
+  }
+}
+
 // Sync room from storage (Local /tmp -> Vercel Blob ground truth)
 export async function syncRoomFromStorage(roomId: string): Promise<Room> {
   const normalizedId = roomId.trim().toLowerCase();
@@ -68,8 +81,13 @@ export async function syncRoomFromStorage(roomId: string): Promise<Room> {
     if (fs.existsSync(tmpPath)) {
       const content = fs.readFileSync(tmpPath, "utf-8");
       const parsed = JSON.parse(content);
-      if (parsed && Array.isArray(parsed.messages) && parsed.messages.length > 0) {
-        mergeRoomMessages(room, parsed.messages);
+      if (parsed) {
+        if (Array.isArray(parsed.messages) && parsed.messages.length > 0) {
+          mergeRoomMessages(room, parsed.messages);
+        }
+        if (parsed.participants && typeof parsed.participants === "object") {
+          mergeRoomParticipants(room, parsed.participants);
+        }
         if (parsed.name && (room.name.startsWith("Room dm--") || room.name.startsWith("Room "))) {
           room.name = parsed.name;
         }
@@ -88,8 +106,13 @@ export async function syncRoomFromStorage(roomId: string): Promise<Room> {
     });
     if (res.ok) {
       const parsed = await res.json();
-      if (parsed && Array.isArray(parsed.messages) && parsed.messages.length > 0) {
-        mergeRoomMessages(room, parsed.messages);
+      if (parsed) {
+        if (Array.isArray(parsed.messages) && parsed.messages.length > 0) {
+          mergeRoomMessages(room, parsed.messages);
+        }
+        if (parsed.participants && typeof parsed.participants === "object") {
+          mergeRoomParticipants(room, parsed.participants);
+        }
         if (parsed.name && (room.name.startsWith("Room dm--") || room.name.startsWith("Room "))) {
           room.name = parsed.name;
         }
@@ -118,6 +141,8 @@ export async function persistRoomToStorage(roomId: string): Promise<void> {
     createdAt: room.createdAt,
     hostId: room.hostId,
     messages: room.messages,
+    participants: room.participants,
+    updatedAt: Date.now(),
   };
   const jsonStr = JSON.stringify(dataToSave);
 
@@ -191,7 +216,23 @@ export function getRoom(roomId: string): Room | null {
   return rooms.get(normalizedId) ?? null;
 }
 
+const DEFAULT_PUBLIC_ROOMS = [
+  { id: "general", name: "Lobby Utama" },
+  { id: "santai", name: "Santai & Kopi" },
+  { id: "teknologi", name: "Teknologi & AI" },
+  { id: "gaming", name: "Gaming & Musik" },
+];
+
+export function ensureDefaultRooms(): void {
+  for (const def of DEFAULT_PUBLIC_ROOMS) {
+    if (!rooms.has(def.id)) {
+      getOrCreateRoom(def.id, def.name);
+    }
+  }
+}
+
 export function listPublicRooms(): { id: string; name: string; participantsCount: number; messageCount: number }[] {
+  ensureDefaultRooms();
   const now = Date.now();
   const result: { id: string; name: string; participantsCount: number; messageCount: number }[] = [];
 

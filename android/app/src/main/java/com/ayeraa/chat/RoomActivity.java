@@ -166,6 +166,29 @@ public class RoomActivity extends Activity {
         });
     }
 
+    private boolean addOrUpdateMessage(JSONObject msg) {
+        if (msg == null) return false;
+        String id = msg.optString("id");
+        long ts = msg.optLong("timestamp", 0);
+        long updated = msg.optLong("updatedAt", ts);
+        long effectiveTs = Math.max(ts, updated);
+        if (effectiveTs > lastTimestamp) {
+            lastTimestamp = effectiveTs;
+        }
+
+        if (!id.isEmpty()) {
+            for (int i = 0; i < messageList.size(); i++) {
+                JSONObject existing = messageList.get(i);
+                if (id.equals(existing.optString("id"))) {
+                    messageList.set(i, msg);
+                    return true;
+                }
+            }
+        }
+        messageList.add(msg);
+        return true;
+    }
+
     private void startPolling() {
         isPolling = true;
         pollRunnable.run();
@@ -179,24 +202,43 @@ public class RoomActivity extends Activity {
                 @Override
                 public void onSuccess(JSONObject res) {
                     JSONArray msgs = res.optJSONArray("messages");
+                    boolean changed = false;
                     if (msgs != null && msgs.length() > 0) {
                         for (int i = 0; i < msgs.length(); i++) {
                             JSONObject m = msgs.optJSONObject(i);
-                            if (m != null) {
-                                messageList.add(m);
-                                long ts = m.optLong("timestamp", 0);
-                                if (ts > lastTimestamp) lastTimestamp = ts;
+                            if (addOrUpdateMessage(m)) {
+                                changed = true;
                             }
                         }
+                    }
+                    if (changed) {
                         adapter.notifyDataSetChanged();
                         lvMessages.setSelection(messageList.size() - 1);
                     }
-                    if (isPolling) pollHandler.postDelayed(pollRunnable, 2000);
+
+                    // Presence indicator
+                    JSONArray parts = res.optJSONArray("participants");
+                    int onlineCount = 0;
+                    if (parts != null) {
+                        for (int i = 0; i < parts.length(); i++) {
+                            JSONObject p = parts.optJSONObject(i);
+                            if (p != null && p.optBoolean("isOnline", false)) {
+                                onlineCount++;
+                            }
+                        }
+                    }
+                    if (onlineCount > 0) {
+                        tvRoomSubtitle.setText("#" + roomId + " • " + onlineCount + " online");
+                    } else {
+                        tvRoomSubtitle.setText("#" + roomId + " • Terhubung Realtime");
+                    }
+
+                    if (isPolling) pollHandler.postDelayed(pollRunnable, 1500);
                 }
 
                 @Override
                 public void onError(String error) {
-                    if (isPolling) pollHandler.postDelayed(pollRunnable, 3500);
+                    if (isPolling) pollHandler.postDelayed(pollRunnable, 2500);
                 }
             });
         }
@@ -212,9 +254,7 @@ public class RoomActivity extends Activity {
             public void onSuccess(JSONObject res) {
                 JSONObject msg = res.optJSONObject("message");
                 if (msg != null) {
-                    messageList.add(msg);
-                    long ts = msg.optLong("timestamp", 0);
-                    if (ts > lastTimestamp) lastTimestamp = ts;
+                    addOrUpdateMessage(msg);
                     adapter.notifyDataSetChanged();
                     lvMessages.setSelection(messageList.size() - 1);
                 }

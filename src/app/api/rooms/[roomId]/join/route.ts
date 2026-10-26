@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { registerParticipant, syncRoomFromStorage } from "@/lib/roomStore";
+import { registerParticipant, syncRoomFromStorage, persistRoomToStorage } from "@/lib/roomStore";
 
 interface RouteProps {
   params: Promise<{ roomId: string }>;
@@ -28,6 +28,9 @@ export async function POST(
       name: body.name.trim(),
       avatar: body.avatar || "☕",
     });
+
+    // Persist new participant so other containers immediately see them
+    await persistRoomToStorage(roomId);
 
     return NextResponse.json({
       success: true,

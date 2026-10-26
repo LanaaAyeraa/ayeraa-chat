@@ -23,7 +23,33 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, conversations: [] });
     }
 
-    const conversations = await getUserDmConversations(userId);
+    const rawConversations = await getUserDmConversations(userId);
+    const conversations = rawConversations.map((c) => ({
+      // Web native fields
+      roomId: c.roomId,
+      peerId: c.peerId,
+      peerName: c.peerName,
+      peerUsername: c.peerUsername,
+      peerAvatar: c.peerAvatar,
+      peerIsOnline: c.peerIsOnline,
+      lastMessageSnippet: c.lastMessageSnippet,
+      lastMessageSenderId: c.lastMessageSenderId,
+      lastMessageTimestamp: c.lastMessageTimestamp,
+      unreadCount: c.unreadCount,
+
+      // Android backward compatibility fields
+      id: c.roomId,
+      peer: {
+        id: c.peerId,
+        name: c.peerName,
+        username: c.peerUsername,
+        avatar: c.peerAvatar,
+        is_online: c.peerIsOnline,
+      },
+      last_message: c.lastMessageSnippet,
+      unread_count: c.unreadCount,
+    }));
+
     return NextResponse.json({
       success: true,
       conversations,
