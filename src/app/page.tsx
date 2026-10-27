@@ -168,13 +168,16 @@ export default function HomePage() {
       <header className="border-b border-zinc-800/80 bg-zinc-950/70 backdrop-blur-xl sticky top-0 z-30">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-950 shadow-sm font-bold transition-transform duration-200 hover:scale-105 active:scale-95 cursor-pointer">
-              <MessageSquare className="w-4 h-4 fill-current" />
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icon.png"
+              alt="Ayera Logo"
+              className="w-8 h-8 rounded-lg shadow-[0_0_12px_rgba(168,85,247,0.35)] object-cover transition-transform duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+            />
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-base tracking-tight text-zinc-100">Ayeraa Chat</span>
-              <span className="text-[10px] font-mono font-medium uppercase px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700/60">
-                Auth Guarded
+              <span className="font-bold text-base tracking-tight text-white">Ayera</span>
+              <span className="text-[10px] font-mono font-medium uppercase px-2 py-0.5 rounded-full bg-indigo-950/60 text-indigo-300 border border-indigo-800/60 shadow-sm">
+                Official
               </span>
             </div>
           </div>
@@ -202,7 +205,13 @@ export default function HomePage() {
         ) : !user ? (
           /* Authentication Screen (Strict Gate) */
           <div className="w-full flex flex-col items-center my-auto">
-            <div className="text-center max-w-xl mx-auto mb-8">
+            <div className="text-center max-w-xl mx-auto mb-8 flex flex-col items-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/icon.png"
+                alt="Ayera App"
+                className="w-16 h-16 rounded-2xl shadow-[0_0_24px_rgba(168,85,247,0.4)] mb-4 transition-transform hover:scale-105"
+              />
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800 bg-zinc-900/80 text-xs font-medium text-zinc-300 mb-4 shadow-sm">
                 <Lock className="w-3.5 h-3.5 text-amber-400" />
                 <TextShimmer>Login Wajib Diperlukan</TextShimmer>
@@ -211,7 +220,7 @@ export default function HomePage() {
                 Ruang Obrolan Eksklusif. <span className="bg-gradient-to-r from-zinc-100 via-indigo-200 to-zinc-400 bg-clip-text text-transparent">Masuk untuk Memulai.</span>
               </h1>
               <p className="mt-2.5 text-zinc-400 text-xs sm:text-sm leading-relaxed max-w-md mx-auto">
-                Silakan masuk dengan akun Ayeraa atau Google untuk membuat room, berkirim pesan, dan berbagi berkas secara aman.
+                Silakan masuk dengan akun Ayera atau Tamu untuk membuat room, berkirim pesan, dan berbagi berkas secara aman.
               </p>
             </div>
 
